@@ -1,0 +1,38 @@
+# <type>(<scope>): <subject>
+# |<----  Sử dụng tối đa 50 ký tự  ---->|
+
+# Body: Giải thích chi tiết (optional)
+# |<----   Tối đa 72 ký tự mỗi dòng   ---->|
+
+# Footer: Issue references (optional)
+# Example: Closes #123, Refs #456
+
+# --- COMMIT TYPES ---
+# feat:     Tính năng mới
+# fix:      Sửa bug
+# docs:     Thay đổi documentation
+# style:    Format code (không ảnh hưởng logic)
+# refactor: Refactor code
+# perf:     Cải thiện performance
+# test:     Thêm/sửa tests
+# chore:    Build process, dependencies
+# ui:       UI/UX updates
+# config:   Configuration changes
+
+# --- SCOPES (Examples) ---
+# worker:   Worker-related features
+# farmer:   Farmer-related features
+# admin:    Admin-related features
+# auth:     Authentication
+# api:      API integration
+# ui:       UI components
+# layout:   Layout components
+# db:       Database changes
+# global:   Global changes
+
+# --- EXAMPLES ---
+# feat(worker): add job search filter by distance
+# fix(farmer): resolve payment calculation error
+# ui(admin): update dashboard chart colors
+# docs(readme): add installation instructions
+# refactor(auth): simplify login logic
