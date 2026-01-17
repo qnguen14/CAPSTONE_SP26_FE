@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Briefcase, Wallet, User, Menu, LogOut, Bell, Leaf } from "lucide-react"
+import { Home, Briefcase, Wallet, User, Menu, LogOut, Bell, Leaf, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -21,6 +21,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const navItems = [
     { icon: Home, label: "Trang chủ", href: "/worker/home" },
     { icon: Briefcase, label: "Việc của tôi", href: "/worker/my-jobs" },
+    { icon: MessageCircle, label: "Tin nhắn", href: "/worker/messages", badge: 2 },
     { icon: Wallet, label: "Ví tiền", href: "/worker/wallet" },
     { icon: User, label: "Hồ sơ", href: "/worker/profile" },
   ]
@@ -32,22 +33,12 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex items-center gap-4">
-              <Link href="/worker/home" className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-agro-green flex items-center justify-center">
-                  <Leaf className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-xl font-bold text-agro-green">AgroTemp</span>
-              </Link>
-              <Link href="/" className="hidden sm:block">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                  Trang chủ
-                </Button>
-              </Link>
-            </div>
+            <Link href="/worker/home" className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-agro-green flex items-center justify-center">
+                <Leaf className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-xl font-bold text-agro-green">AgroTemp</span>
+            </Link>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
@@ -61,6 +52,11 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
                     >
                       <item.icon className="h-4 w-4" />
                       {item.label}
+                      {item.badge && item.badge > 0 && (
+                        <span className="ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
                     </Button>
                   </Link>
                 )
@@ -137,6 +133,11 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
                             >
                               <item.icon className="h-5 w-5" />
                               {item.label}
+                              {item.badge && item.badge > 0 && (
+                                <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                  {item.badge}
+                                </span>
+                              )}
                             </Button>
                           </Link>
                         )
@@ -165,7 +166,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
       </header>
 
       {/* Main Content */}
-      <main>{children}</main>
+      <main className="container mx-auto px-4 lg:px-8 py-6">{children}</main>
     </div>
   )
 }
