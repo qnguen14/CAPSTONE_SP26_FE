@@ -15,40 +15,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
-  Smartphone,
-  Monitor,
   ArrowLeft,
   ArrowRight,
   Check,
-  MapPin,
-  Upload,
 } from "lucide-react";
-
-const workerSkills = [
-  "Thu hoạch lúa",
-  "Làm đất",
-  "Phun thuốc",
-  "Bón phân",
-  "Trồng cây",
-  "Chăn nuôi",
-  "Vận chuyển",
-  "Máy gặt đập",
-  "Lái máy cày",
-  "Tưới tiêu",
-];
 
 function RegisterContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const typeParam = searchParams.get("type");
-
-  const [registerType, setRegisterType] = useState<"farmer" | "worker">(
-    typeParam === "worker" ? "worker" : "farmer"
-  );
 
   // Farmer registration state
   const [farmerStep, setFarmerStep] = useState(1);
@@ -64,47 +39,12 @@ function RegisterContent() {
     description: "",
   });
 
-  // Worker registration state
-  const [workerStep, setWorkerStep] = useState(1);
-  const [workerPhone, setWorkerPhone] = useState("");
-  const [workerOtp, setWorkerOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [workerData, setWorkerData] = useState({
-    name: "",
-    avatar: null as File | null,
-    skills: [] as string[],
-    address: "",
-    experience: "",
-  });
-
-  const toggleSkill = (skill: string) => {
-    setWorkerData((prev) => ({
-      ...prev,
-      skills: prev.skills.includes(skill)
-        ? prev.skills.filter((s) => s !== skill)
-        : [...prev.skills, skill],
-    }));
-  };
-
   const handleFarmerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (farmerStep < 3) {
       setFarmerStep(farmerStep + 1);
     } else {
       router.push("/farmer/dashboard");
-    }
-  };
-
-  const handleWorkerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (workerStep === 1) {
-      if (!otpSent) {
-        setOtpSent(true);
-      } else {
-        setWorkerStep(2);
-      }
-    } else {
-      router.push("/worker/home");
     }
   };
 
@@ -135,33 +75,11 @@ function RegisterContent() {
             <CardTitle className="text-2xl text-agro-green">
               Đăng ký AgroTemp
             </CardTitle>
-            <CardDescription>Tạo tài khoản mới để bắt đầu</CardDescription>
+            <CardDescription>Đăng ký dành cho Nông dân</CardDescription>
           </CardHeader>
 
           <CardContent>
-            <Tabs
-              value={registerType}
-              onValueChange={(v) => setRegisterType(v as "farmer" | "worker")}
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger
-                  value="farmer"
-                  className="gap-2 data-[state=active]:bg-agro-green data-[state=active]:text-white"
-                >
-                  <Monitor className="h-4 w-4" />
-                  Nông dân
-                </TabsTrigger>
-                <TabsTrigger
-                  value="worker"
-                  className="gap-2 data-[state=active]:bg-agro-orange data-[state=active]:text-white"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Lao động
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Farmer Registration - Multi Step */}
-              <TabsContent value="farmer">
+            <div>
                 {/* Progress Steps */}
                 <div className="flex items-center justify-between mb-6">
                   {[1, 2, 3].map((step) => (
@@ -417,221 +335,7 @@ function RegisterContent() {
                     </Link>
                   </p>
                 </form>
-              </TabsContent>
-
-              {/* Worker Registration - Phone + Profile */}
-              <TabsContent value="worker">
-                {/* Progress Steps */}
-                <div className="flex items-center justify-center mb-6 gap-4">
-                  {[1, 2].map((step) => (
-                    <div key={step} className="flex items-center">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          workerStep >= step
-                            ? "bg-agro-orange text-white"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {workerStep > step ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          step
-                        )}
-                      </div>
-                      {step < 2 && (
-                        <div
-                          className={`w-20 h-1 mx-2 ${
-                            workerStep > step ? "bg-agro-orange" : "bg-muted"
-                          }`}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <form onSubmit={handleWorkerSubmit} className="space-y-4">
-                  {workerStep === 1 && (
-                    <>
-                      <h3 className="font-semibold text-lg mb-4">
-                        Xác thực số điện thoại
-                      </h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="worker-phone">Số điện thoại</Label>
-                        <Input
-                          id="worker-phone"
-                          type="tel"
-                          placeholder="0912 345 678"
-                          value={workerPhone}
-                          onChange={(e) => setWorkerPhone(e.target.value)}
-                          className="border-agro-orange/30"
-                          disabled={otpSent}
-                        />
-                      </div>
-                      {otpSent && (
-                        <div className="space-y-2">
-                          <Label htmlFor="worker-otp">Mã xác thực OTP</Label>
-                          <Input
-                            id="worker-otp"
-                            type="text"
-                            placeholder="Nhập mã 6 số"
-                            value={workerOtp}
-                            onChange={(e) => setWorkerOtp(e.target.value)}
-                            className="border-agro-orange/30 text-center text-2xl tracking-widest"
-                            maxLength={6}
-                          />
-                          <p className="text-sm text-muted-foreground text-center">
-                            Mã OTP đã gửi đến {workerPhone}.{" "}
-                            <button
-                              type="button"
-                              className="text-agro-orange hover:underline"
-                            >
-                              Gửi lại
-                            </button>
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {workerStep === 2 && (
-                    <>
-                      <h3 className="font-semibold text-lg mb-4">
-                        Thiết lập hồ sơ
-                      </h3>
-
-                      {/* Avatar Upload */}
-                      <div className="flex flex-col items-center gap-3 mb-4">
-                        <div className="w-24 h-24 rounded-full bg-agro-orange/10 border-2 border-dashed border-agro-orange/30 flex items-center justify-center">
-                          <Upload className="h-8 w-8 text-agro-orange/50" />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="text-agro-orange border-agro-orange/30 bg-transparent"
-                        >
-                          Tải ảnh đại diện
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="worker-name">Họ và tên</Label>
-                        <Input
-                          id="worker-name"
-                          placeholder="Nguyễn Văn B"
-                          value={workerData.name}
-                          onChange={(e) =>
-                            setWorkerData({
-                              ...workerData,
-                              name: e.target.value,
-                            })
-                          }
-                          className="border-agro-orange/30"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="worker-address">Địa chỉ</Label>
-                        <Input
-                          id="worker-address"
-                          placeholder="Xã/Phường, Huyện/Quận, Tỉnh"
-                          value={workerData.address}
-                          onChange={(e) =>
-                            setWorkerData({
-                              ...workerData,
-                              address: e.target.value,
-                            })
-                          }
-                          className="border-agro-orange/30"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Kỹ năng (chọn các việc bạn có thể làm)</Label>
-                        <div className="flex flex-wrap gap-2 p-3 border rounded-lg border-agro-orange/30">
-                          {workerSkills.map((skill) => (
-                            <Badge
-                              key={skill}
-                              variant={
-                                workerData.skills.includes(skill)
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className={`cursor-pointer transition-colors ${
-                                workerData.skills.includes(skill)
-                                  ? "bg-agro-orange hover:bg-agro-orange-dark text-white"
-                                  : "border-agro-orange/30 text-foreground hover:bg-agro-orange/10"
-                              }`}
-                              onClick={() => toggleSkill(skill)}
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="worker-experience">
-                          Kinh nghiệm (tùy chọn)
-                        </Label>
-                        <Textarea
-                          id="worker-experience"
-                          placeholder="Mô tả ngắn gọn kinh nghiệm làm việc..."
-                          value={workerData.experience}
-                          onChange={(e) =>
-                            setWorkerData({
-                              ...workerData,
-                              experience: e.target.value,
-                            })
-                          }
-                          className="border-agro-orange/30 min-h-20"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="flex gap-3 pt-2">
-                    {workerStep > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setWorkerStep(1)}
-                        className="flex-1"
-                      >
-                        Quay lại
-                      </Button>
-                    )}
-                    <Button
-                      type="submit"
-                      className="flex-1 bg-agro-orange hover:bg-agro-orange-dark text-white gap-2"
-                    >
-                      {workerStep === 1 ? (
-                        otpSent ? (
-                          <>
-                            Xác nhận
-                            <ArrowRight className="h-4 w-4" />
-                          </>
-                        ) : (
-                          "Nhận mã OTP"
-                        )
-                      ) : (
-                        "Hoàn tất đăng ký"
-                      )}
-                    </Button>
-                  </div>
-
-                  <p className="text-center text-sm text-muted-foreground">
-                    Đã có tài khoản?{" "}
-                    <Link
-                      href="/auth/login"
-                      className="text-agro-orange hover:underline font-medium"
-                    >
-                      Đăng nhập
-                    </Link>
-                  </p>
-                </form>
-              </TabsContent>
-            </Tabs>
+            </div>
           </CardContent>
         </Card>
       </div>

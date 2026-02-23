@@ -15,35 +15,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smartphone, Monitor, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [loginType, setLoginType] = useState<"farmer" | "worker">("farmer");
 
   // Farmer login state
   const [farmerEmail, setFarmerEmail] = useState("");
   const [farmerPassword, setFarmerPassword] = useState("");
 
-  // Worker login state
-  const [workerPhone, setWorkerPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-
   const handleFarmerLogin = (e: React.FormEvent) => {
     e.preventDefault();
     router.push("/farmer/dashboard");
-  };
-
-  const handleWorkerLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpSent) {
-      setOtpSent(true);
-    } else {
-      router.push("/worker/home");
-    }
   };
 
   return (
@@ -73,33 +57,11 @@ export default function LoginPage() {
             <CardTitle className="text-2xl text-agro-green">
               Đăng nhập AgroTemp
             </CardTitle>
-            <CardDescription>Chọn loại tài khoản để tiếp tục</CardDescription>
+            <CardDescription>Đăng nhập dành cho Nông dân</CardDescription>
           </CardHeader>
 
           <CardContent>
-            <Tabs
-              value={loginType}
-              onValueChange={(v) => setLoginType(v as "farmer" | "worker")}
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger
-                  value="farmer"
-                  className="gap-2 data-[state=active]:bg-agro-green data-[state=active]:text-white"
-                >
-                  <Monitor className="h-4 w-4" />
-                  Nông dân
-                </TabsTrigger>
-                <TabsTrigger
-                  value="worker"
-                  className="gap-2 data-[state=active]:bg-agro-orange data-[state=active]:text-white"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Lao động
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Farmer Login Form */}
-              <TabsContent value="farmer">
+            <div>
                 <form onSubmit={handleFarmerLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="farmer-email">Email</Label>
@@ -167,67 +129,7 @@ export default function LoginPage() {
                     </Link>
                   </p>
                 </form>
-              </TabsContent>
-
-              {/* Worker Login Form - Phone OTP */}
-              <TabsContent value="worker">
-                <form onSubmit={handleWorkerLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="worker-phone">Số điện thoại</Label>
-                    <Input
-                      id="worker-phone"
-                      type="tel"
-                      placeholder="0912 345 678"
-                      value={workerPhone}
-                      onChange={(e) => setWorkerPhone(e.target.value)}
-                      className="border-agro-orange/30 focus:border-agro-orange"
-                      disabled={otpSent}
-                    />
-                  </div>
-
-                  {otpSent && (
-                    <div className="space-y-2">
-                      <Label htmlFor="otp">Mã xác thực OTP</Label>
-                      <Input
-                        id="otp"
-                        type="text"
-                        placeholder="Nhập mã 6 số"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="border-agro-orange/30 focus:border-agro-orange text-center text-2xl tracking-widest"
-                        maxLength={6}
-                      />
-                      <p className="text-sm text-muted-foreground text-center">
-                        Mã OTP đã gửi đến {workerPhone}.{" "}
-                        <button
-                          type="button"
-                          className="text-agro-orange hover:underline"
-                        >
-                          Gửi lại
-                        </button>
-                      </p>
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-agro-orange hover:bg-agro-orange-dark text-white"
-                  >
-                    {otpSent ? "Xác nhận đăng nhập" : "Nhận mã OTP"}
-                  </Button>
-
-                  <p className="text-center text-sm text-muted-foreground">
-                    Chưa có tài khoản?{" "}
-                    <Link
-                      href="/auth/register?type=worker"
-                      className="text-agro-orange hover:underline font-medium"
-                    >
-                      Đăng ký ngay
-                    </Link>
-                  </p>
-                </form>
-              </TabsContent>
-            </Tabs>
+            </div>
           </CardContent>
         </Card>
       </div>

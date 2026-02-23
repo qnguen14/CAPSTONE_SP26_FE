@@ -41,17 +41,6 @@ export function HeroSection() {
             </Button>
           </div>
 
-          {/* Worker CTA */}
-          <div className="flex-1 rounded-2xl bg-white/10 p-6 backdrop-blur-md transition-all hover:bg-white/20">
-            <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-agro-orange">
-              <QrCode className="h-8 w-8 text-white" />
-            </div>
-            <h3 className="mb-2 text-xl font-bold text-white">Tôi cần tìm việc</h3>
-            <p className="mb-4 text-sm text-white/80">Tải ứng dụng và bắt đầu tìm việc làm gần bạn</p>
-            <Button size="lg" className="w-full bg-agro-orange hover:bg-agro-orange-dark text-white font-semibold">
-              Tải ứng dụng tìm việc
-            </Button>
-          </div>
         </div>
 
         {/* Scroll indicator */}

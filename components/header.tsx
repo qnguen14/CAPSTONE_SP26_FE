@@ -76,39 +76,13 @@ export function Header() {
 
           {/* Portal Navigation - Only show when logged in */}
           {isAuthenticated && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Menu className="h-4 w-4" />
-                  {language === "vi" ? "Cổng thông tin" : "Portals"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem asChild>
-                  <Link href="/farmer" className="cursor-pointer">
-                    {language === "vi" ? "Cổng Nông dân" : "Farmer Portal"}
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/worker/home" className="cursor-pointer">
-                    {language === "vi" ? "Cổng Lao động" : "Worker Portal"}
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link href="/farmer">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Menu className="h-4 w-4" />
+                {language === "vi" ? "Cổng Nông dân" : "Farmer Portal"}
+              </Button>
+            </Link>
           )}
-
-          {/* Download App Button */}
-          <Link href="/worker/home">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-agro-green text-agro-green hover:bg-agro-green hover:text-white bg-transparent"
-            >
-              <Smartphone className="h-4 w-4" />
-              {language === "vi" ? "Tải App Worker" : "Download Worker App"}
-            </Button>
-          </Link>
 
           {/* Farmer Login Button */}
           <Link href="/auth/login">
@@ -149,15 +123,6 @@ export function Header() {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
-              <Link href="/worker/home">
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 border-agro-green text-agro-green bg-transparent"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  {language === "vi" ? "Tải App Worker" : "Download Worker App"}
-                </Button>
-              </Link>
               <Link href="/auth/login">
                 <Button className="w-full bg-agro-green text-white hover:bg-agro-green-dark">
                   {language === "vi" ? "Đăng nhập Nông dân" : "Farmer Login"}

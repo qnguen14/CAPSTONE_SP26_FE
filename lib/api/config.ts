@@ -41,20 +41,6 @@ export const API_ENDPOINTS = {
     PAYMENT_DETAIL: (id: string) => `/farmer/payments/${id}`,
   },
   
-  // Worker
-  WORKER: {
-    DASHBOARD: '/worker/dashboard',
-    JOBS: '/worker/jobs',
-    JOB_DETAIL: (id: string) => `/worker/jobs/${id}`,
-    SEARCH_JOBS: '/worker/jobs/search',
-    APPLY_JOB: (id: string) => `/worker/jobs/${id}/apply`,
-    MY_APPLICATIONS: '/worker/applications',
-    MY_JOBS: '/worker/my-jobs',
-    JOB_HISTORY: '/worker/job-history',
-    WALLET: '/worker/wallet',
-    TRANSACTIONS: '/worker/transactions',
-  },
-  
   // Admin
   ADMIN: {
     DASHBOARD: '/admin/dashboard',

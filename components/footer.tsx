@@ -43,10 +43,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/download"
+                  href="/farmer"
                   className="hover:text-agro-green transition-colors"
                 >
-                  Tải App Worker
+                  Farmer Portal
                 </Link>
               </li>
               <li>
