@@ -16,18 +16,57 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { authService } from "@/lib/api/services/auth.service";
+import { useToast } from "@/hooks/use-toast";
+import { GoogleLoginButton } from "@/components/auth/google-login-button";
+import { handleAuthError } from "@/lib/utils/error-handler";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Farmer login state
   const [farmerEmail, setFarmerEmail] = useState("");
   const [farmerPassword, setFarmerPassword] = useState("");
 
-  const handleFarmerLogin = (e: React.FormEvent) => {
+  const handleFarmerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/farmer/dashboard");
+    setIsLoading(true);
+
+    try {
+      const response = await authService.login({
+        email: farmerEmail,
+        password: farmerPassword,
+      });
+
+      if (response.status_code === 200 || response.status_code === 0) {
+        toast({
+          title: "Thành công",
+          description: response.message || "Đăng nhập thành công",
+        });
+        
+        // Redirect to farmer dashboard
+        router.push("/farmer/dashboard");
+      } else {
+        // Handle error response from API
+        toast({
+          title: "Lỗi",
+          description: handleAuthError({ response: { data: response } }),
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      // Handle network errors or unexpected errors
+      toast({
+        title: "Lỗi",
+        description: handleAuthError(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -116,9 +155,13 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     className="w-full bg-agro-green hover:bg-agro-green-dark text-white"
+                    disabled={isLoading}
                   >
-                    Đăng nhập
+                    {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                   </Button>
+                  
+                  <GoogleLoginButton roleId={3} showDivider />
+
                   <p className="text-center text-sm text-muted-foreground">
                     Chưa có tài khoản?{" "}
                     <Link

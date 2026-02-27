@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5057',
   TIMEOUT: Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30000,
 } as const;
 
@@ -8,13 +8,14 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH_TOKEN: '/auth/refresh-token',
-    VERIFY_EMAIL: '/auth/verify-email',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
+    LOGIN: '/api/v1/login',
+    REGISTER: '/api/v1/register',
+    GOOGLE_LOGIN: '/api/v1/google-login',
+    LOGOUT: '/api/v1/logout',
+    REFRESH_TOKEN: '/api/v1/refresh-token',
+    VERIFY_EMAIL: '/api/v1/verify-email',
+    FORGOT_PASSWORD: '/api/v1/forgot-password',
+    RESET_PASSWORD: '/api/v1/reset-password',
   },
   
   // User

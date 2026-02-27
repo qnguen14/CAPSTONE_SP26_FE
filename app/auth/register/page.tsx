@@ -4,7 +4,7 @@ import type React from "react";
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,41 +16,104 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-} from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { authService } from "@/lib/api/services/auth.service";
+import { useToast } from "@/hooks/use-toast";
+import { GoogleLoginButton } from "@/components/auth/google-login-button";
+import { handleRegistrationError } from "@/lib/utils/error-handler";
 
 function RegisterContent() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Farmer registration state
-  const [farmerStep, setFarmerStep] = useState(1);
-  const [farmerData, setFarmerData] = useState({
-    name: "",
+  // Registration form state
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
-    phone: "",
-    farmName: "",
-    farmAddress: "",
-    farmSize: "",
-    description: "",
+    phoneNumber: "",
+    address: "",
   });
 
-  const handleFarmerSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (farmerStep < 3) {
-      setFarmerStep(farmerStep + 1);
-    } else {
-      router.push("/farmer/dashboard");
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Lỗi",
+        description: "Mật khẩu xác nhận không khớp",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      toast({
+        title: "Lỗi",
+        description: "Mật khẩu phải có ít nhất 6 ký tự",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Lỗi",
+        description: "Email không hợp lệ",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authService.register({
+        email: formData.email,
+        password: formData.password,
+        phoneNumber: formData.phoneNumber,
+        address: formData.address,
+        roleId: 3, // Farmer role
+      });
+
+      if (response.status_code === 200 || response.status_code === 0) {
+        toast({
+          title: "Thành công",
+          description: response.message || "Đăng ký thành công",
+        });
+
+        // Redirect to farmer dashboard
+        router.push("/farmer/dashboard");
+      } else {
+        // Handle error response from API
+        toast({
+          title: "Lỗi",
+          description: handleRegistrationError({ response: { data: response } }),
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      // Handle network errors or unexpected errors
+      toast({
+        title: "Lỗi",
+        description: handleRegistrationError(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-agro-cream via-white to-agro-green/5 flex items-center justify-center p-4 py-8">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-gradient-to-br from-agro-cream via-white to-agro-green/5 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-agro-green hover:text-agro-green-dark mb-6 transition-colors"
@@ -79,263 +142,162 @@ function RegisterContent() {
           </CardHeader>
 
           <CardContent>
-            <div>
-                {/* Progress Steps */}
-                <div className="flex items-center justify-between mb-6">
-                  {[1, 2, 3].map((step) => (
-                    <div key={step} className="flex items-center">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          farmerStep >= step
-                            ? "bg-agro-green text-white"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {farmerStep > step ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          step
-                        )}
-                      </div>
-                      {step < 3 && (
-                        <div
-                          className={`w-16 h-1 mx-2 ${
-                            farmerStep > step ? "bg-agro-green" : "bg-muted"
-                          }`}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="email@example.com"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      email: e.target.value,
+                    })
+                  }
+                  className="border-agro-green/30 focus:border-agro-green"
+                  required
+                />
+              </div>
 
-                <form onSubmit={handleFarmerSubmit} className="space-y-4">
-                  {farmerStep === 1 && (
-                    <>
-                      <h3 className="font-semibold text-lg mb-4">
-                        Thông tin tài khoản
-                      </h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="farmer-name">Họ và tên</Label>
-                        <Input
-                          id="farmer-name"
-                          placeholder="Nguyễn Văn A"
-                          value={farmerData.name}
-                          onChange={(e) =>
-                            setFarmerData({
-                              ...farmerData,
-                              name: e.target.value,
-                            })
-                          }
-                          className="border-agro-green/30"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="farmer-email">Email</Label>
-                        <Input
-                          id="farmer-email"
-                          type="email"
-                          placeholder="email@example.com"
-                          value={farmerData.email}
-                          onChange={(e) =>
-                            setFarmerData({
-                              ...farmerData,
-                              email: e.target.value,
-                            })
-                          }
-                          className="border-agro-green/30"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="farmer-phone">Số điện thoại</Label>
-                        <Input
-                          id="farmer-phone"
-                          type="tel"
-                          placeholder="0912 345 678"
-                          value={farmerData.phone}
-                          onChange={(e) =>
-                            setFarmerData({
-                              ...farmerData,
-                              phone: e.target.value,
-                            })
-                          }
-                          className="border-agro-green/30"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="farmer-password">Mật khẩu</Label>
-                          <Input
-                            id="farmer-password"
-                            type="password"
-                            placeholder="Tối thiểu 8 ký tự"
-                            value={farmerData.password}
-                            onChange={(e) =>
-                              setFarmerData({
-                                ...farmerData,
-                                password: e.target.value,
-                              })
-                            }
-                            className="border-agro-green/30"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="farmer-confirm">
-                            Xác nhận mật khẩu
-                          </Label>
-                          <Input
-                            id="farmer-confirm"
-                            type="password"
-                            placeholder="Nhập lại mật khẩu"
-                            value={farmerData.confirmPassword}
-                            onChange={(e) =>
-                              setFarmerData({
-                                ...farmerData,
-                                confirmPassword: e.target.value,
-                              })
-                            }
-                            className="border-agro-green/30"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Số điện thoại</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="0912 345 678"
+                  value={formData.phoneNumber}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      phoneNumber: e.target.value,
+                    })
+                  }
+                  className="border-agro-green/30 focus:border-agro-green"
+                  required
+                />
+              </div>
 
-                  {farmerStep === 2 && (
-                    <>
-                      <h3 className="font-semibold text-lg mb-4">
-                        Thông tin nông trại
-                      </h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="farm-name">Tên nông trại</Label>
-                        <Input
-                          id="farm-name"
-                          placeholder="Nông trại Hạnh Phúc"
-                          value={farmerData.farmName}
-                          onChange={(e) =>
-                            setFarmerData({
-                              ...farmerData,
-                              farmName: e.target.value,
-                            })
-                          }
-                          className="border-agro-green/30"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="farm-address">Địa chỉ nông trại</Label>
-                        <div className="relative">
-                          <Input
-                            id="farm-address"
-                            placeholder="Số nhà, đường, xã/phường, huyện/quận, tỉnh"
-                            value={farmerData.farmAddress}
-                            onChange={(e) =>
-                              setFarmerData({
-                                ...farmerData,
-                                farmAddress: e.target.value,
-                              })
-                            }
-                            className="border-agro-green/30 pr-10"
-                          />
-                          <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="farm-size">Diện tích (hecta)</Label>
-                        <Input
-                          id="farm-size"
-                          type="number"
-                          placeholder="5"
-                          value={farmerData.farmSize}
-                          onChange={(e) =>
-                            setFarmerData({
-                              ...farmerData,
-                              farmSize: e.target.value,
-                            })
-                          }
-                          className="border-agro-green/30"
-                        />
-                      </div>
-                    </>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="address">Địa chỉ</Label>
+                <Textarea
+                  id="address"
+                  placeholder="Số nhà, đường, xã/phường, huyện/quận, tỉnh"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: e.target.value,
+                    })
+                  }
+                  className="border-agro-green/30 focus:border-agro-green min-h-20"
+                  required
+                />
+              </div>
 
-                  {farmerStep === 3 && (
-                    <>
-                      <h3 className="font-semibold text-lg mb-4">Mô tả thêm</h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="farm-description">
-                          Giới thiệu về nông trại
-                        </Label>
-                        <Textarea
-                          id="farm-description"
-                          placeholder="Nông trại chuyên trồng lúa, hoa màu..."
-                          value={farmerData.description}
-                          onChange={(e) =>
-                            setFarmerData({
-                              ...farmerData,
-                              description: e.target.value,
-                            })
-                          }
-                          className="border-agro-green/30 min-h-24"
-                        />
-                      </div>
-                      <div className="p-4 bg-agro-cream rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          Bằng việc đăng ký, bạn đồng ý với{" "}
-                          <Link
-                            href="/terms"
-                            className="text-agro-green hover:underline"
-                          >
-                            Điều khoản sử dụng
-                          </Link>{" "}
-                          và{" "}
-                          <Link
-                            href="/privacy"
-                            className="text-agro-green hover:underline"
-                          >
-                            Chính sách bảo mật
-                          </Link>{" "}
-                          của AgroTemp.
-                        </p>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="flex gap-3 pt-2">
-                    {farmerStep > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setFarmerStep(farmerStep - 1)}
-                        className="flex-1"
-                      >
-                        Quay lại
-                      </Button>
+              <div className="space-y-2">
+                <Label htmlFor="password">Mật khẩu</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Tối thiểu 8 ký tự"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        password: e.target.value,
+                      })
+                    }
+                    className="border-agro-green/30 focus:border-agro-green pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
                     )}
-                    <Button
-                      type="submit"
-                      className="flex-1 bg-agro-green hover:bg-agro-green-dark text-white gap-2"
-                    >
-                      {farmerStep < 3 ? (
-                        <>
-                          Tiếp tục
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      ) : (
-                        "Hoàn tất đăng ký"
-                      )}
-                    </Button>
-                  </div>
+                  </button>
+                </div>
+              </div>
 
-                  <p className="text-center text-sm text-muted-foreground">
-                    Đã có tài khoản?{" "}
-                    <Link
-                      href="/auth/login"
-                      className="text-agro-green hover:underline font-medium"
-                    >
-                      Đăng nhập
-                    </Link>
-                  </p>
-                </form>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Nhập lại mật khẩu"
+                    value={formData.confirmPassword}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    className="border-agro-green/30 focus:border-agro-green pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 bg-agro-cream rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Bằng việc đăng ký, bạn đồng ý với{" "}
+                  <Link
+                    href="/terms"
+                    className="text-agro-green hover:underline"
+                  >
+                    Điều khoản sử dụng
+                  </Link>{" "}
+                  và{" "}
+                  <Link
+                    href="/privacy"
+                    className="text-agro-green hover:underline"
+                  >
+                    Chính sách bảo mật
+                  </Link>{" "}
+                  của AgroTemp.
+                </p>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-agro-green hover:bg-agro-green-dark text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang đăng ký..." : "Đăng ký"}
+              </Button>
+
+              <GoogleLoginButton roleId={3} showDivider />
+
+              <p className="text-center text-sm text-muted-foreground">
+                Đã có tài khoản?{" "}
+                <Link
+                  href="/auth/login"
+                  className="text-agro-green hover:underline font-medium"
+                >
+                  Đăng nhập
+                </Link>
+              </p>
+            </form>
           </CardContent>
         </Card>
       </div>

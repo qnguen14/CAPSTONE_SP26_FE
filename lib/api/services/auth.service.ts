@@ -1,10 +1,11 @@
-import axiosInstance from '../axios-instance';
+import { axiosInstance } from '../axios-instance';
 import { API_ENDPOINTS } from '../config';
 import type {
   ApiResponse,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
+  GoogleLoginRequest,
 } from '../types';
 
 export const authService = {
@@ -12,7 +13,17 @@ export const authService = {
    * Login user
    */
   login: async (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
-    const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+    const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, {
+      email: credentials.email,
+      password: credentials.password,
+    });
+    
+    // Store token in localStorage
+    if (response.data.data.token) {
+      localStorage.setItem('access_token', response.data.data.token);
+      localStorage.setItem('user_email', response.data.data.email);
+    }
+    
     return response.data;
   },
 
@@ -21,15 +32,42 @@ export const authService = {
    */
   register: async (data: RegisterRequest): Promise<ApiResponse<LoginResponse>> => {
     const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REGISTER, data);
+    
+    // Store token in localStorage
+    if (response.data.data.token) {
+      localStorage.setItem('access_token', response.data.data.token);
+      localStorage.setItem('user_email', response.data.data.email);
+    }
+    
+    return response.data;
+  },
+
+  /**
+   * Google login
+   */
+  googleLogin: async (googleToken: string, roleId: number): Promise<ApiResponse<LoginResponse>> => {
+    const response = await axiosInstance.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, { 
+      googleToken,
+      roleId 
+    });
+    
+    // Store token in localStorage
+    if (response.data.data.token) {
+      localStorage.setItem('access_token', response.data.data.token);
+      localStorage.setItem('user_email', response.data.data.email);
+    }
+    
     return response.data;
   },
 
   /**
    * Logout user
    */
-  logout: async (): Promise<ApiResponse<void>> => {
-    const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
-    return response.data;
+  logout: async (): Promise<void> => {
+    // Clear tokens from localStorage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('refresh_token');
   },
 
   /**

@@ -1,10 +1,9 @@
 // Common API Types
 
 export interface ApiResponse<T = any> {
-  success: boolean;
+  message: string;
+  status_code: number;
   data: T;
-  message?: string;
-  errors?: Record<string, string[]>;
 }
 
 export interface PaginatedResponse<T> {
@@ -26,21 +25,33 @@ export interface ApiError {
 // Auth Types
 export interface LoginRequest {
   email: string;
+  phoneNumber?: string;
   password: string;
 }
 
+export interface AuthData {
+  token: string;
+  expiresAt: string;
+  email: string;
+}
+
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: User;
+  token: string;
+  expiresAt: string;
+  email: string;
 }
 
 export interface RegisterRequest {
   email: string;
   password: string;
-  fullName: string;
-  phoneNumber: string;
-  role: 'farmer' | 'worker';
+  phoneNumber?: string;
+  address?: string;
+  roleId: number;
+}
+
+export interface GoogleLoginRequest {
+  googleToken: string;
+  roleId: number;
 }
 
 // User Types

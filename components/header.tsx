@@ -90,7 +90,7 @@ export function Header() {
               size="sm"
               className="bg-agro-green hover:bg-agro-green-dark text-white"
             >
-              {language === "vi" ? "Đăng nhập Nông dân" : "Farmer Login"}
+              {language === "vi" ? "Đăng nhập" : "Login"}
             </Button>
           </Link>
         </div>
