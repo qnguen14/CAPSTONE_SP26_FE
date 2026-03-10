@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5057',
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5057/api/v1',
   TIMEOUT: Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30000,
 } as const;
 
@@ -8,26 +8,19 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: '/api/v1/login',
-    REGISTER: '/api/v1/register',
-    GOOGLE_LOGIN: '/api/v1/google-login',
-    LOGOUT: '/api/v1/logout',
-    REFRESH_TOKEN: '/api/v1/refresh-token',
-    VERIFY_EMAIL: '/api/v1/verify-email',
-    FORGOT_PASSWORD: '/api/v1/forgot-password',
-    RESET_PASSWORD: '/api/v1/reset-password',
-  },
-  
-  // User
-  USER: {
-    PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
-    CHANGE_PASSWORD: '/users/change-password',
-    UPLOAD_AVATAR: '/users/avatar',
+    LOGIN: '/login',
+    REGISTER: '/register',
+    GOOGLE_LOGIN: '/google-login',
+    LOGOUT: '/logout',
+    REFRESH_TOKEN: '/refresh-token',
+    VERIFY_EMAIL: '/verify-email',
+    FORGOT_PASSWORD: '/forgot-password',
+    RESET_PASSWORD: '/reset-password',
   },
   
   // Farmer
   FARMER: {
+    PROFILE: '/farmer-profile', 
     DASHBOARD: '/farmer/dashboard',
     JOBS: '/farmer/jobs',
     JOB_DETAIL: (id: string) => `/farmer/jobs/${id}`,

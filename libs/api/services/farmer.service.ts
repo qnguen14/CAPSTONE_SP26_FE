@@ -7,9 +7,15 @@ import type {
   CreateJobRequest,
   UpdateJobRequest,
   Application,
+  FarmerProfile,
 } from '../types';
 
 export const farmerService = {
+
+  getProfile: async (): Promise<ApiResponse<FarmerProfile>> => {
+    const response = await axiosInstance.get(API_ENDPOINTS.FARMER.PROFILE);
+    return response.data;
+  },
   /**
    * Get farmer dashboard data
    */

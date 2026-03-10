@@ -25,6 +25,8 @@ import {
   Leaf,
   MessageCircle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FarmerProfile, farmerService } from "@/libs/api";
 
 export default function FarmerLayout({
   children,
@@ -41,6 +43,20 @@ export default function FarmerLayout({
     { icon: Wallet, label: "Thanh toán", href: "/farmer/payments" },
     { icon: Settings, label: "Cài đặt", href: "/farmer/settings" },
   ];
+  const [profile, setProfile] = useState<FarmerProfile | null>(null)
+
+  useEffect(() => {
+      const fetchProfile = async () => {
+        try {
+          const response = await farmerService.getProfile()
+          setProfile(response.data)
+        } catch (error) {
+          console.error('Failed to fetch farmer profile:', error)
+        }
+      }
+  
+      fetchProfile()
+    }, [])
 
   return (
     <div className="min-h-screen bg-agro-cream">
@@ -97,7 +113,7 @@ export default function FarmerLayout({
                       <AvatarImage src="/placeholder.svg" />
                       <AvatarFallback className="bg-agro-green text-white">NA</AvatarFallback>
                     </Avatar>
-                    <span className="font-medium">Nguyễn Văn An</span>
+                    <span className="font-medium">{profile?.contactName || 'Null'}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -138,7 +154,7 @@ export default function FarmerLayout({
                         <AvatarFallback className="bg-agro-green text-white">NA</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold">Nguyễn Văn An</p>
+                        <p className="font-semibold">{profile?.contactName || 'Null'}</p>
                         <p className="text-sm text-muted-foreground">Nông dân</p>
                       </div>
                     </div>

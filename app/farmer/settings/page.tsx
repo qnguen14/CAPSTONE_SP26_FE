@@ -9,17 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MapPin, Upload, Save } from "lucide-react"
+import { FarmerProfile } from "@/libs/api/types"
 
-export default function SettingsPage() {
-  const [profile, setProfile] = useState({
-    name: "Nguyễn Văn An",
-    email: "nguyenvanan@email.com",
-    phone: "0912 345 678",
-    farmName: "Nông trại Hạnh Phúc",
-    farmAddress: "Xã Tân Phú, Huyện Châu Thành, Bến Tre",
-    farmSize: "5",
-    description: "Nông trại chuyên trồng lúa và hoa màu theo hướng hữu cơ.",
-  })
+export default function SettingsPage() {  
+  const [profile, setProfile] = useState<FarmerProfile | null>(null)
 
   const [notifications, setNotifications] = useState({
     newApplications: true,
@@ -58,8 +51,8 @@ export default function SettingsPage() {
               <Label htmlFor="name">Họ và tên</Label>
               <Input
                 id="name"
-                value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                value={profile?.contactName || ""}
+                // onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
               />
             </div>
             <div className="space-y-2">
@@ -67,16 +60,16 @@ export default function SettingsPage() {
               <Input
                 id="email"
                 type="email"
-                value={profile.email}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                value={profile?.email || ""}
+                // onChange={(e) => setProfile({ ...profile, email: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Số điện thoại</Label>
               <Input
                 id="phone"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                value={profile?.contactNumber || ""}
+                // onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
               />
             </div>
           </div>
@@ -94,25 +87,25 @@ export default function SettingsPage() {
             <Label htmlFor="farmName">Tên nông trại</Label>
             <Input
               id="farmName"
-              value={profile.farmName}
-              onChange={(e) => setProfile({ ...profile, farmName: e.target.value })}
+              value={profile?.organizationName || ""}
+              // onChange={(e) => setProfile({ ...profile, farmName: e.target.value })}
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="farmAddress">Địa chỉ nông trại</Label>
             <div className="relative">
               <Input
                 id="farmAddress"
-                value={profile.farmAddress}
-                onChange={(e) => setProfile({ ...profile, farmAddress: e.target.value })}
+                value={profile?.farmAddress || ""}
+                // onChange={(e) => setProfile({ ...profile, farmAddress: e.target.value })}
                 className="pr-10"
               />
               <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
-          </div>
+          </div> */}
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="farmSize">Diện tích (hecta)</Label>
             <Input
               id="farmSize"
@@ -120,9 +113,9 @@ export default function SettingsPage() {
               value={profile.farmSize}
               onChange={(e) => setProfile({ ...profile, farmSize: e.target.value })}
             />
-          </div>
+          </div> */}
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="description">Giới thiệu về nông trại</Label>
             <Textarea
               id="description"
@@ -130,7 +123,7 @@ export default function SettingsPage() {
               onChange={(e) => setProfile({ ...profile, description: e.target.value })}
               className="min-h-24"
             />
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 
