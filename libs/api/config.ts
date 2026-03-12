@@ -12,15 +12,15 @@ export const API_ENDPOINTS = {
     REGISTER: '/register',
     GOOGLE_LOGIN: '/google-login',
     LOGOUT: '/logout',
-    REFRESH_TOKEN: '/refresh-token',
-    VERIFY_EMAIL: '/verify-email',
-    FORGOT_PASSWORD: '/forgot-password',
-    RESET_PASSWORD: '/reset-password',
+    REFRESH_TOKEN: '/refresh',
+    VERIFY_EMAIL: '/verify',
+    FORGOT_PASSWORD: '/forget',
+    RESET_PASSWORD: '/reset',
   },
   
   // Farmer
   FARMER: {
-    PROFILE: '/farmer-profile', 
+    PROFILE: '/farmer', 
     DASHBOARD: '/farmer/dashboard',
     JOBS: '/farmer/jobs',
     JOB_DETAIL: (id: string) => `/farmer/jobs/${id}`,
