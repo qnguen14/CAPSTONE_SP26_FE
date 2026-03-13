@@ -85,6 +85,12 @@ export function Header() {
           )}
 
           {/* Farmer Login Button */}
+          <Link href="/auth/register?type=farmer">
+            <Button variant="outline" size="sm" className="border-agro-green text-agro-green hover:bg-agro-green/10">
+              {language === "vi" ? "Đăng ký" : "Register"}
+            </Button>
+          </Link>
+
           <Link href="/auth/login">
             <Button
               size="sm"
@@ -123,6 +129,11 @@ export function Header() {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
+              <Link href="/auth/register?type=farmer">
+                <Button variant="outline" className="w-full border-agro-green text-agro-green hover:bg-agro-green/10">
+                  {language === "vi" ? "Đăng ký Nông dân" : "Farmer Register"}
+                </Button>
+              </Link>
               <Link href="/auth/login">
                 <Button className="w-full bg-agro-green text-white hover:bg-agro-green-dark">
                   {language === "vi" ? "Đăng nhập Nông dân" : "Farmer Login"}

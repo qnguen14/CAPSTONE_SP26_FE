@@ -49,6 +49,14 @@ export interface RegisterRequest {
   roleId: number;
 }
 
+export interface UpdateFarmerRequest {
+  organizationName?: string;
+  contactName?: string;
+  contactNumber?: string;
+  cooperativeAffiliation?: string;
+  farmType?: string;
+}
+
 export interface GoogleLoginRequest {
   googleToken: string;
   roleId: number;

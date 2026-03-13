@@ -113,7 +113,7 @@ export default function FarmerLayout({
                       <AvatarImage src="/placeholder.svg" />
                       <AvatarFallback className="bg-agro-green text-white">NA</AvatarFallback>
                     </Avatar>
-                    <span className="font-medium">{profile?.contactName || 'Null'}</span>
+                    <span className="font-medium">{profile?.contactName || 'Nguyen Van A'}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">

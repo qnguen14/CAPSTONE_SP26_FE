@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,11 +8,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MapPin, Upload, Save } from "lucide-react"
-import { FarmerProfile } from "@/libs/api/types"
+import { MapPin, Upload, Save, Loader2 } from "lucide-react"
+import { FarmerProfile, UpdateFarmerRequest } from "@/libs/api/types"
+import { farmerService } from "@/libs/api/services/farmer.service"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {  
   const [profile, setProfile] = useState<FarmerProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [formData, setFormData] = useState<UpdateFarmerRequest>({
+    organizationName: "",
+    contactName: "",
+    contactNumber: "",
+    cooperativeAffiliation: "",
+    farmType: "",
+  })
 
   const [notifications, setNotifications] = useState({
     newApplications: true,
@@ -20,6 +31,77 @@ export default function SettingsPage() {
     paymentReminders: true,
     promotions: false,
   })
+
+  const { toast } = useToast()
+
+  // Fetch profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoading(true)
+        const response = await farmerService.getProfile()
+        if (response.data) {
+          setProfile(response.data)
+          setFormData({
+            organizationName: response.data.organizationName || "",
+            contactName: response.data.contactName || "",
+            contactNumber: response.data.contactNumber || "",
+            cooperativeAffiliation: response.data.cooperativeAffiliation || "",
+            farmType: response.data.farmType || "",
+          })
+        }
+      } catch (error: any) {
+        console.error("Failed to load profile:", error)
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải thông tin hồ sơ",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [toast])
+
+  const handleInputChange = (field: keyof UpdateFarmerRequest, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      const response = await farmerService.updateProfile(formData)
+      if (response.data) {
+        setProfile(response.data)
+        toast({
+          title: "Thành công",
+          description: "Cập nhật thông tin nông trại thành công",
+        })
+      }
+    } catch (error: any) {
+      console.error("Failed to update profile:", error)
+      toast({
+        title: "Lỗi",
+        description: error.response?.data?.message || "Không thể cập nhật thông tin",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-4 lg:p-6 flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-agro-green" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-3xl">
@@ -38,7 +120,9 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
               <AvatarImage src="/placeholder.svg" />
-              <AvatarFallback className="bg-agro-green text-white text-2xl">NA</AvatarFallback>
+              <AvatarFallback className="bg-agro-green text-white text-2xl">
+                {profile?.contactName?.charAt(0).toUpperCase() || "NA"}
+              </AvatarFallback>
             </Avatar>
             <Button variant="outline" className="gap-2 bg-transparent">
               <Upload className="h-4 w-4" />
@@ -51,8 +135,8 @@ export default function SettingsPage() {
               <Label htmlFor="name">Họ và tên</Label>
               <Input
                 id="name"
-                value={profile?.contactName || ""}
-                // onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
+                value={formData.contactName || ""}
+                onChange={(e) => handleInputChange("contactName", e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -61,15 +145,15 @@ export default function SettingsPage() {
                 id="email"
                 type="email"
                 value={profile?.email || ""}
-                // onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                disabled
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Số điện thoại</Label>
               <Input
                 id="phone"
-                value={profile?.contactNumber || ""}
-                // onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                value={formData.contactNumber || ""}
+                onChange={(e) => handleInputChange("contactNumber", e.target.value)}
               />
             </div>
           </div>
@@ -83,47 +167,34 @@ export default function SettingsPage() {
           <CardDescription>Cập nhật thông tin về nông trại của bạn</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="farmName">Tên nông trại</Label>
-            <Input
-              id="farmName"
-              value={profile?.organizationName || ""}
-              // onChange={(e) => setProfile({ ...profile, farmName: e.target.value })}
-            />
-          </div>
-
-          {/* <div className="space-y-2">
-            <Label htmlFor="farmAddress">Địa chỉ nông trại</Label>
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="farmName">Tên nông trại</Label>
               <Input
-                id="farmAddress"
-                value={profile?.farmAddress || ""}
-                // onChange={(e) => setProfile({ ...profile, farmAddress: e.target.value })}
-                className="pr-10"
+                id="farmName"
+                value={formData.organizationName || ""}
+                onChange={(e) => handleInputChange("organizationName", e.target.value)}
               />
-              <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
-          </div> */}
-
-          {/* <div className="space-y-2">
-            <Label htmlFor="farmSize">Diện tích (hecta)</Label>
-            <Input
-              id="farmSize"
-              type="number"
-              value={profile.farmSize}
-              onChange={(e) => setProfile({ ...profile, farmSize: e.target.value })}
-            />
-          </div> */}
-
-          {/* <div className="space-y-2">
-            <Label htmlFor="description">Giới thiệu về nông trại</Label>
-            <Textarea
-              id="description"
-              value={profile.description}
-              onChange={(e) => setProfile({ ...profile, description: e.target.value })}
-              className="min-h-24"
-            />
-          </div> */}
+            <div className="space-y-2">
+              <Label htmlFor="farmType">Loại nông trại</Label>
+              <Input
+                id="farmType"
+                value={formData.farmType || ""}
+                onChange={(e) => handleInputChange("farmType", e.target.value)}
+                placeholder="vd: Rau, Lúa, Chăn nuôi..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cooperative">Hiệp hội liên kết</Label>
+              <Input
+                id="cooperative"
+                value={formData.cooperativeAffiliation || ""}
+                onChange={(e) => handleInputChange("cooperativeAffiliation", e.target.value)}
+                placeholder="vd: Hiệp hội nông dân xã..."
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -178,9 +249,22 @@ export default function SettingsPage() {
       </Card>
 
       {/* Save Button */}
-      <Button className="w-full md:w-auto bg-agro-green hover:bg-agro-green-dark text-white">
-        <Save className="h-4 w-4 mr-2" />
-        Lưu thay đổi
+      <Button 
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full md:w-auto bg-agro-green hover:bg-agro-green-dark text-white"
+      >
+        {saving ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Đang lưu...
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4 mr-2" />
+            Lưu thay đổi
+          </>
+        )}
       </Button>
     </div>
   )

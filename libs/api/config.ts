@@ -2,6 +2,7 @@
 export const API_CONFIG = {
   BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5057/api/v1',
   TIMEOUT: Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30000,
+  GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
 } as const;
 
 // API Endpoints
@@ -21,6 +22,7 @@ export const API_ENDPOINTS = {
   // Farmer
   FARMER: {
     PROFILE: '/farmer', 
+    UPDATEPROFILE: '/farmer',
     DASHBOARD: '/farmer/dashboard',
     JOBS: '/farmer/jobs',
     JOB_DETAIL: (id: string) => `/farmer/jobs/${id}`,

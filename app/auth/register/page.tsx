@@ -29,7 +29,6 @@ function RegisterContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Registration form state
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -41,7 +40,6 @@ function RegisterContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Lỗi",
@@ -51,7 +49,6 @@ function RegisterContent() {
       return;
     }
 
-    // Validate password length
     if (formData.password.length < 6) {
       toast({
         title: "Lỗi",
@@ -61,7 +58,6 @@ function RegisterContent() {
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -80,32 +76,41 @@ function RegisterContent() {
         password: formData.password,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
-        roleId: 3, // Farmer role
+        roleId: 3,
       });
 
-      if (response.status_code === 200 || response.status_code === 0) {
-        toast({
-          title: "✅ Thành công",
-          description: response.message || "Đăng ký thành công! Đang chuyển hướng...",
-          variant: "default",
-        });
+      const isSuccess =
+        response.status_code === 0 ||
+        response.status_code === 200 ||
+        response.status_code === 201 ||
+        Boolean(response.data?.token);
 
-        // Redirect to farmer dashboard after a short delay
-        setTimeout(() => {
-          router.push("/farmer/dashboard");
-        }, 1000);
-      } else {
-        // Handle error response from API
+      if (!isSuccess) {
         const errorMessage = handleRegistrationError({ response: { data: response } });
         toast({
           title: "❌ Đăng ký thất bại",
           description: errorMessage,
           variant: "destructive",
         });
+        return;
       }
+
+      if (response.data?.token) {
+        localStorage.setItem("access_token", response.data.token);
+        localStorage.setItem("user_email", response.data.email);
+        localStorage.setItem("token_expires_at", response.data.expiresAt);
+      }
+
+      toast({
+        title: "Success",
+        description: response.message || "Đăng ký thành công! Đang chuyển hướng...",
+        variant: "default",
+      });
+
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 1000);
     } catch (error: any) {
-      // Handle network errors or unexpected errors
-      console.error("Registration error:", error);
       const errorMessage = handleRegistrationError(error);
       toast({
         title: "❌ Đăng ký thất bại",
@@ -284,13 +289,18 @@ function RegisterContent() {
                 </p>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-agro-green hover:bg-agro-green-dark text-white"
-                disabled={isLoading}
-              >
-                {isLoading ? "Đang đăng ký..." : "Đăng ký"}
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button asChild type="button" variant="outline" className="w-full">
+                  <Link href="/auth/login">Hủy</Link>
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full bg-agro-green hover:bg-agro-green-dark text-white"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Đang đăng ký..." : "Đăng ký"}
+                </Button>
+              </div>
 
               <GoogleLoginButton roleId={3} showDivider />
 
