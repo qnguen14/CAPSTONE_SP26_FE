@@ -61,8 +61,8 @@ export default function LoginPage() {
         login(user, accessToken, refreshToken);
 
         toast({
-          title: "✅ Thành công",
-          description: response.message || "Đăng nhập thành công! Đang chuyển hướng...",
+          title: "Thành công",
+          description: response.message || "Đăng nhập thành công. Đang chuyển hướng...",
           variant: "default",
         });
         
@@ -74,7 +74,7 @@ export default function LoginPage() {
         // Handle error response from API
         const errorMessage = handleAuthError({ response: { data: response } });
         toast({
-          title: "❌ Đăng nhập thất bại",
+          title: "Đăng nhập thất bại",
           description: errorMessage,
           variant: "destructive",
         });
@@ -84,7 +84,7 @@ export default function LoginPage() {
       console.error("Login error:", error);
       const errorMessage = handleAuthError(error);
       toast({
-        title: "❌ Đăng nhập thất bại",
+        title: "Đăng nhập thất bại",
         description: errorMessage,
         variant: "destructive",
       });

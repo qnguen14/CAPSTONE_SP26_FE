@@ -38,6 +38,15 @@ export const API_ENDPOINTS = {
     PAYMENT_DETAIL: (id: string) => `/farmer/payments/${id}`,
   },
   
+  // Farm
+  FARM: {
+    FARMS: '/farm',
+    FARM: (id: string) => `/farm/${id}`,
+    ADD_FARM: '/farm',
+    UPDATE_FARM: (id: string) => `/farm/${id}`,
+    REMOVE_FARM: (id: string) => `/farm/${id}`,
+  },
+
   // Admin
   ADMIN: {
     DASHBOARD: '/admin/dashboard',

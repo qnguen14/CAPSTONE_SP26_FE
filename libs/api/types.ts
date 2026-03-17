@@ -67,6 +67,26 @@ export interface UpdateFarmerRequest {
   avatarUrl?: string;
 }
 
+export interface UpdateFarmRequest {
+  address: string,
+  latitude: number,
+  longitude: number,
+  locationName: string,
+  isPrimary: boolean
+}
+
+export interface GetFarmResponse {
+  farmId: string,
+  farmerProfileId?: string,
+  address: string,
+  latitude: number,
+  longitude: number,
+  locationName: string,
+  isPrimary: boolean,
+  createdAt: string,
+  updatedAt: string
+}
+
 export interface GoogleLoginRequest {
   googleToken: string;
   roleId: number;
