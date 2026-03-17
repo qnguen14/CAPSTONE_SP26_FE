@@ -94,15 +94,25 @@ export interface GoogleLoginRequest {
 }
 
 // User Types
-export interface User {
+export interface GetUserResponse {
   id: string;
   email: string;
-  fullName: string;
   phoneNumber: string;
-  role: 'farmer' | 'worker' | 'admin';
-  avatar?: string;
+  address: string;
+  passwordHash: string;
+  role: string;
   createdAt: string;
-  updatedAt: string;
+  isActive: boolean;
+  isVerified: boolean;
+}
+
+export interface UpdateUserRequest {
+  email?: string;
+  phoneNumber?: string;
+  address?: string;
+  roleId: number;
+  isActive: boolean;
+  isVerified: boolean;
 }
 
 export interface UpdateProfileRequest {

@@ -177,8 +177,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       <AvatarFallback>AD</AvatarFallback>
                     </Avatar>
                     <div className="hidden text-left md:block">
-                      <p className="text-sm font-medium">Admin User</p>
-                      <p className="text-xs text-muted-foreground">Super Admin</p>
+                      <p className="text-sm font-medium">Quản trị viên</p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
