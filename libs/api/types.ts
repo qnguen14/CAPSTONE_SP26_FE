@@ -60,10 +60,8 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 export interface UpdateFarmerRequest {
-  organizationName?: string;
   contactName?: string;
   contactNumber?: string;
-  cooperativeAffiliation?: string;
   farmType?: string;
   avatarUrl?: string;
 }
@@ -127,11 +125,9 @@ export interface FarmerProfile {
   userId: string;
   email: string;
   avatarUrl?: string;
-  organizationName: string;
   contactName: string;
   contactNumber: string;
-  cooperativeAffiliation: string;
-  farmType: string;
+  farmType?: string;
   averageRating: number;
   totalJobsPosted: number;
   totalJobsCompleted: number;

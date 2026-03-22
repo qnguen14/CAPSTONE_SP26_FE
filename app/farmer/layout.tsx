@@ -39,6 +39,8 @@ export default function FarmerLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, isLoading, logout } = useAuth();
+  const [checkingProfile, setCheckingProfile] = useState(false);
+  const [isProfileMissing, setIsProfileMissing] = useState(false);
 
   const navItems = [
     { icon: LayoutDashboard, label: "Tổng quan", href: "/farmer/dashboard" },
@@ -57,19 +59,40 @@ export default function FarmerLayout({
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
-      const fetchProfile = async () => {
-        try {
-          const response = await farmerService.getProfile()
-          setProfile(response.data)
-        } catch (error) {
-          console.error('Failed to fetch farmer profile:', error)
+    const fetchProfile = async () => {
+      if (!isAuthenticated) return;
+
+      setCheckingProfile(true);
+      try {
+        const response = await farmerService.getProfile();
+        setProfile(response.data);
+        setIsProfileMissing(false);
+      } catch (error: any) {
+        const statusCode = error?.response?.status;
+        if (statusCode === 500) {
+          setIsProfileMissing(true);
+          setProfile(null);
+
+          // Force users with missing profile to complete settings first.
+          if (!pathname.startsWith("/farmer/settings")) {
+            router.replace("/farmer/settings?setup=required");
+          }
+        } else {
+          console.error("Failed to fetch farmer profile:", error);
         }
+      } finally {
+        setCheckingProfile(false);
       }
-  
-      if (isAuthenticated) {
-        fetchProfile()
-      }
-    }, [isAuthenticated])
+    };
+
+    fetchProfile();
+  }, [isAuthenticated, pathname, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && isProfileMissing && !pathname.startsWith("/farmer/settings")) {
+      router.replace("/farmer/settings?setup=required");
+    }
+  }, [isAuthenticated, isProfileMissing, pathname, router]);
 
   const handleLogout = async () => {
     try {
@@ -83,7 +106,7 @@ export default function FarmerLayout({
   };
 
   // Show loading state while checking authentication
-  if (isLoading) {
+  if (isLoading || checkingProfile) {
     return (
       <div className="min-h-screen bg-agro-cream flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-agro-green" />

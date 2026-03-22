@@ -24,10 +24,8 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState("")
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState<UpdateFarmerRequest>({
-    organizationName: "",
     contactName: "",
     contactNumber: "",
-    cooperativeAffiliation: "",
     farmType: "",
     avatarUrl: "",
   })
@@ -52,16 +50,30 @@ export default function SettingsPage() {
           const initialAvatar = response.data.avatarUrl || ""
           setAvatarPreview(initialAvatar)
           setFormData({
-            organizationName: response.data.organizationName || "",
             contactName: response.data.contactName || "",
             contactNumber: response.data.contactNumber || "",
-            cooperativeAffiliation: response.data.cooperativeAffiliation || "",
             farmType: response.data.farmType || "",
             avatarUrl: initialAvatar,
           })
         }
       } catch (error: any) {
         console.error("Failed to load profile:", error)
+
+        const statusCode = error?.response?.status
+        const backendMessage = error?.response?.data?.message
+        const isProfileMissing =
+          statusCode === 500 &&
+          typeof backendMessage === "string" &&
+          backendMessage.toLowerCase().includes("farmer profile not found")
+
+        if (isProfileMissing) {
+          toast({
+            title: "Thông báo",
+            description: "Vui lòng cập nhật thông tin cá nhân",
+          })
+          return
+        }
+
         toast({
           title: "Lỗi",
           description: handleApiError(error, {
@@ -160,14 +172,14 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 lg:p-6">
       <div>
-        <h1 className="text-2xl font-bold">Cài đặt tài khoản</h1>
-        <p className="text-muted-foreground">Quản lý thông tin cá nhân, hồ sơ nông trại và các địa điểm canh tác</p>
+        <h1 className="text-2xl font-bold">Thông tin</h1>
+        <p className="text-muted-foreground">Chỉnh sửa thông tin cá nhân và các địa điểm canh tác</p>
       </div>
 
       <Tabs defaultValue="account" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 md:w-fit">
           <TabsTrigger value="account">Tài khoản</TabsTrigger>
-          <TabsTrigger value="farm">Nông trại</TabsTrigger>
+          <TabsTrigger value="farm">Quản lý địa điểm</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account" className="space-y-6">
@@ -230,6 +242,15 @@ export default function SettingsPage() {
                     id="phone"
                     value={formData.contactNumber || ""}
                     onChange={(e) => handleInputChange("contactNumber", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="farmType">Loại nông trại</Label>
+                  <Input
+                    id="farmType"
+                    value={formData.farmType || ""}
+                    onChange={(e) => handleInputChange("farmType", e.target.value)}
+                    placeholder="vd: Rau, Lúa, Chăn nuôi..."
                   />
                 </div>
               </div>
@@ -305,61 +326,6 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="farm" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Thông tin nông trại</CardTitle>
-              <CardDescription>Cập nhật hồ sơ nông trại sẽ hiển thị công khai trên tài khoản của bạn</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="farmName">Tên nông trại</Label>
-                  <Input
-                    id="farmName"
-                    value={formData.organizationName || ""}
-                    onChange={(e) => handleInputChange("organizationName", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="farmType">Loại nông trại</Label>
-                  <Input
-                    id="farmType"
-                    value={formData.farmType || ""}
-                    onChange={(e) => handleInputChange("farmType", e.target.value)}
-                    placeholder="vd: Rau, Lúa, Chăn nuôi..."
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="cooperative">Hiệp hội liên kết</Label>
-                  <Input
-                    id="cooperative"
-                    value={formData.cooperativeAffiliation || ""}
-                    onChange={(e) => handleInputChange("cooperativeAffiliation", e.target.value)}
-                    placeholder="vd: Hiệp hội nông dân xã..."
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full bg-agro-green text-white hover:bg-agro-green-dark md:w-auto"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Đang lưu...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Lưu hồ sơ nông trại
-              </>
-            )}
-          </Button>
-
           <FarmerFarmManager />
         </TabsContent>
       </Tabs>

@@ -24,8 +24,8 @@ import { Loader2, MapPin, Pencil, Plus, Star, Trash2 } from "lucide-react"
 
 type FarmFormState = {
   address: string
-  latitude: string
-  longitude: string
+  latitude: number | null
+  longitude: number | null
   locationName: string
   isPrimary: boolean
 }
@@ -43,17 +43,20 @@ type FarmWithOptionalId = GetFarmResponse & {
 
 const EMPTY_FORM: FarmFormState = {
   address: "",
-  latitude: "",
-  longitude: "",
+  latitude: null,
+  longitude: null,
   locationName: "",
   isPrimary: false,
 }
 
 function toFormState(farm: GetFarmResponse): FarmFormState {
+  const latitude = Number(farm.latitude)
+  const longitude = Number(farm.longitude)
+
   return {
     address: farm.address,
-    latitude: String(farm.latitude),
-    longitude: String(farm.longitude),
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
     locationName: farm.locationName,
     isPrimary: farm.isPrimary,
   }
@@ -221,6 +224,8 @@ export function FarmerFarmManager() {
     setFormData((current) => ({
       ...current,
       address: value,
+      latitude: null,
+      longitude: null,
     }))
     setShowLocationSuggestions(true)
   }
@@ -233,8 +238,8 @@ export function FarmerFarmManager() {
     setFormData((current) => ({
       ...current,
       address: place.display_name,
-      latitude: Number.isNaN(latitude) ? current.latitude : String(latitude),
-      longitude: Number.isNaN(longitude) ? current.longitude : String(longitude),
+      latitude: Number.isNaN(latitude) ? current.latitude : latitude,
+      longitude: Number.isNaN(longitude) ? current.longitude : longitude,
       locationName: current.locationName.trim() || place.name || fallbackName,
     }))
     setLocationSuggestions([])
@@ -284,8 +289,10 @@ export function FarmerFarmManager() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const latitude = Number(formData.latitude)
-    const longitude = Number(formData.longitude)
+    const latitude =
+      formData.latitude === null ? null : Number(formData.latitude)
+    const longitude =
+      formData.longitude === null ? null : Number(formData.longitude)
 
     if (!formData.locationName.trim() || !formData.address.trim()) {
       toast({
@@ -296,10 +303,15 @@ export function FarmerFarmManager() {
       return
     }
 
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    if (
+      latitude === null ||
+      longitude === null ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
       toast({
         title: "Tọa độ không hợp lệ",
-        description: "Vui lòng nhập vĩ độ và kinh độ hợp lệ",
+        description: "Vui lòng chọn địa chỉ từ gợi ý OSM để lấy tọa độ tự động",
         variant: "destructive",
       })
       return
@@ -345,8 +357,8 @@ export function FarmerFarmManager() {
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader>
-            <CardTitle>{editingFarmId ? "Chỉnh sửa nông trại" : "Thêm nông trại"}</CardTitle>
-            <CardDescription>Quản lý các địa điểm canh tác và chọn địa điểm chính cho hồ sơ của bạn</CardDescription>
+            <CardTitle>{editingFarmId ? "Chỉnh sửa địa điểm" : "Thêm địa điểm"}</CardTitle>
+            <CardDescription>Quản lý các địa điểm canh tác và chọn địa điểm mặc định cho hồ sơ của bạn</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -401,37 +413,21 @@ export function FarmerFarmManager() {
                     </div>
                   ) : null}
                 </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">Vĩ độ</Label>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude}
-                    onChange={(event) => handleFieldChange("latitude", event.target.value)}
-                    placeholder="10.8231"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">Kinh độ</Label>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude}
-                    onChange={(event) => handleFieldChange("longitude", event.target.value)}
-                    placeholder="106.6297"
-                  />
-                </div>
+                {formData.latitude !== null && formData.longitude !== null ? (
+                  <p className="text-xs text-muted-foreground">
+                    Tọa độ OSM: {Number(formData.latitude).toFixed(6)}, {Number(formData.longitude).toFixed(6)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Chọn một địa chỉ từ danh sách gợi ý để tự động lấy tọa độ.
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                 <div>
-                  <p className="font-medium">Đặt làm nông trại chính</p>
-                  <p className="text-sm text-muted-foreground">Địa điểm này sẽ được ưu tiên hiển thị trên hồ sơ</p>
+                  <p className="font-medium">Đặt làm địa điểm mặc định</p>
+                  <p className="text-sm text-muted-foreground">Địa điểm này sẽ được ưu tiên khi tạo bài đăng mới</p>
                 </div>
                 <Switch
                   checked={formData.isPrimary}
@@ -467,7 +463,7 @@ export function FarmerFarmManager() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Danh sách nông trại</CardTitle>
+            <CardTitle>Danh sách địa điểm</CardTitle>
             <CardDescription>Theo dõi toàn bộ địa điểm canh tác đang gắn với tài khoản của bạn</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -478,8 +474,8 @@ export function FarmerFarmManager() {
             ) : farms.length === 0 ? (
               <div className="rounded-lg border border-dashed px-6 py-10 text-center">
                 <MapPin className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-                <p className="font-medium">Chưa có nông trại nào</p>
-                <p className="text-sm text-muted-foreground">Tạo nông trại đầu tiên để quản lý địa điểm làm việc của bạn</p>
+                <p className="font-medium">Chưa có địa điểm nào</p>
+                <p className="text-sm text-muted-foreground">Tạo địa điểm đầu tiên để quản lý địa điểm làm việc của bạn</p>
               </div>
             ) : (
               farms.map((farm, index) => {

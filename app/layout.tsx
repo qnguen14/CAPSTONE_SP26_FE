@@ -6,6 +6,8 @@ import { AuthProvider } from "@/stores/auth.store"
 import { GoogleAuthProvider } from "@/components/auth/google-auth-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { IntroScreenWrapper } from "@/components/intro-screen-wrapper"
+import { LoadingProvider } from "@/contexts/loading-context"
+import { LoadingOverlay } from "@/components/loading-overlay"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -30,14 +32,17 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        <IntroScreenWrapper />
-        <GoogleAuthProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </GoogleAuthProvider>
-        <Toaster />
-        <Analytics />
+        <LoadingProvider>
+          <IntroScreenWrapper />
+          <GoogleAuthProvider>
+            <AuthProvider>
+              <LoadingOverlay />
+              {children}
+            </AuthProvider>
+          </GoogleAuthProvider>
+          <Toaster />
+          <Analytics />
+        </LoadingProvider>
       </body>
     </html>
   )

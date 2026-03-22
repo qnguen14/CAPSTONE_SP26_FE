@@ -157,6 +157,7 @@ export function FarmerJobForm() {
   const [contractStartDate, setContractStartDate] = useState("")
   const [contractEndDate, setContractEndDate] = useState("")
 
+  const [dailyStartDate, setDailyStartDate] = useState("")
   const [daysToHire, setDaysToHire] = useState("1")
   const [dailyStartTime, setDailyStartTime] = useState("06:00")
   const [dailyEndTime, setDailyEndTime] = useState("17:00")
@@ -171,9 +172,9 @@ export function FarmerJobForm() {
   const daysToHireNumber = Number.parseInt(daysToHire, 10) || 0
   const incomeNumber = Number.parseInt(income, 10) || 0
 
-  const hasDailyRuleError = scheduleType === "daily" && workersNeededNumber < daysToHireNumber
   const selectedContractStartDate = contractStartDate ? parseDDMMYYYYToDate(contractStartDate) ?? undefined : undefined
   const selectedContractEndDate = contractEndDate ? parseDDMMYYYYToDate(contractEndDate) ?? undefined : undefined
+  const selectedDailyStartDate = dailyStartDate ? parseDDMMYYYYToDate(dailyStartDate) ?? undefined : undefined
 
   const getSkillLabel = (skillId: string) => {
     const foundSkill = availableSkills.find((item) => item.id === skillId)
@@ -461,6 +462,15 @@ export function FarmerJobForm() {
     setContractEndDate(format(date, "dd/MM/yyyy"))
   }
 
+  const handleDailyStartSelect = (date?: Date) => {
+    if (!date) {
+      setDailyStartDate("")
+      return
+    }
+
+    setDailyStartDate(format(date, "dd/MM/yyyy"))
+  }
+
   const validateBeforePreview = () => {
     if (!title.trim()) {
       return "Vui lòng nhập tiêu đề công việc."
@@ -468,10 +478,6 @@ export function FarmerJobForm() {
 
     if (!incomeNumber || incomeNumber < 1) {
       return "Vui lòng nhập thu nhập hợp lệ."
-    }
-
-    if (!workersNeededNumber || workersNeededNumber < 1) {
-      return "Số lượng nhân công cần phải lớn hơn 0."
     }
 
     if (!location.trim()) {
@@ -516,16 +522,25 @@ export function FarmerJobForm() {
     }
 
     if (scheduleType === "daily") {
+      if (!dailyStartDate) {
+        return "Vui lòng chọn ngày bắt đầu cho công việc theo ngày."
+      }
+
+      const parsedDailyStartDate = parseDDMMYYYYToDate(dailyStartDate)
+      if (!parsedDailyStartDate) {
+        return "Ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng dd/mm/yyyy."
+      }
+
       if (!daysToHireNumber || daysToHireNumber < 1) {
         return "Vui lòng nhập số ngày muốn thuê hợp lệ."
       }
 
-      if (!dailyStartTime || !dailyEndTime) {
-        return "Vui lòng nhập giờ làm việc theo ngày."
+      if (!workersNeededNumber || workersNeededNumber < 1) {
+        return "Vui lòng nhập số lượng nhân công hợp lệ cho công việc theo ngày."
       }
 
-      if (workersNeededNumber < daysToHireNumber) {
-        return "Số lượng nhân công luôn phải lớn hơn hoặc bằng số ngày muốn thuê."
+      if (!dailyStartTime || !dailyEndTime) {
+        return "Vui lòng nhập giờ làm việc theo ngày."
       }
     }
 
@@ -571,8 +586,15 @@ export function FarmerJobForm() {
       endDate = endISO
       estimatedHours = toContractEstimatedHours(startISO, endISO)
     } else {
-      const start = new Date()
+      const parsedDailyStartDate = parseDDMMYYYYToDate(dailyStartDate)
+      if (!parsedDailyStartDate) {
+        setSubmitError("Ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng dd/mm/yyyy.")
+        return
+      }
+
+      const start = new Date(parsedDailyStartDate)
       const end = new Date()
+      end.setTime(start.getTime())
       end.setDate(end.getDate() + Math.max(0, daysToHireNumber - 1))
 
       startDate = start.toISOString()
@@ -598,7 +620,7 @@ export function FarmerJobForm() {
       startDate,
       endDate,
       estimatedHours,
-      workersNeeded: workersNeededNumber,
+      workersNeeded: scheduleType === "daily" ? workersNeededNumber : 1,
       workersAccepted: 0,
       wageTypeId: DEFAULT_WAGE_TYPE_ID,
       wageAmount: incomeNumber,
@@ -620,7 +642,8 @@ export function FarmerJobForm() {
         createdAt: createdJob.createdAt ?? nowISO,
         title: createdJob.title ?? title.trim(),
         income: createdJob.wageAmount ?? incomeNumber,
-        workersNeeded: createdJob.workersNeeded ?? workersNeededNumber,
+        workersNeeded:
+          createdJob.workersNeeded ?? (scheduleType === "daily" ? workersNeededNumber : 1),
         location: createdJob.address ?? location.trim(),
         locationLat,
         locationLng,
@@ -662,6 +685,7 @@ export function FarmerJobForm() {
     setScheduleType("contract")
     setContractStartDate("")
     setContractEndDate("")
+    setDailyStartDate("")
     setDaysToHire("1")
     setDailyStartTime("06:00")
     setDailyEndTime("17:00")
@@ -724,11 +748,207 @@ export function FarmerJobForm() {
         <div className="space-y-6">
           {step === 1 ? (
             <>
-              <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Loại hình công việc</CardTitle>
+                  <CardDescription>Chọn khoán hoặc theo ngày trước khi điền thông tin chi tiết.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup
+                    value={scheduleType}
+                    onValueChange={(value) => setScheduleType(value as WorkScheduleType)}
+                    className="grid gap-3 sm:grid-cols-2"
+                  >
+                    <label
+                      htmlFor="schedule-contract"
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
+                        scheduleType === "contract" ? "border-primary bg-primary/5" : "border-border",
+                      )}
+                    >
+                      <RadioGroupItem id="schedule-contract" value="contract" className="mt-1" />
+                      <div>
+                        <p className="font-medium">Theo khoán</p>
+                        <p className="text-sm text-muted-foreground">
+                          Chỉ cần ngày bắt đầu và ngày kết thúc, không cần nhập số người.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label
+                      htmlFor="schedule-daily"
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
+                        scheduleType === "daily" ? "border-primary bg-primary/5" : "border-border",
+                      )}
+                    >
+                      <RadioGroupItem id="schedule-daily" value="daily" className="mt-1" />
+                      <div>
+                        <p className="font-medium">Theo ngày</p>
+                        <p className="text-sm text-muted-foreground">
+                          Nhập số ngày, ngày bắt đầu, khung giờ và số lượng nhân công.
+                        </p>
+                      </div>
+                    </label>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Thời gian làm việc</CardTitle>
+                    <CardDescription>Nhập thời gian theo loại hình bạn đã chọn.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {scheduleType === "contract" ? (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <Label htmlFor="contract-start">Ngày bắt đầu *</Label>
+                          <div className="mt-2 flex gap-2">
+                            <Input
+                              id="contract-start"
+                              type="text"
+                              value={contractStartDate}
+                              onChange={(event) => setContractStartDate(event.target.value)}
+                              placeholder="dd/mm/yyyy"
+                              className="flex-1"
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button type="button" variant="outline" size="icon" aria-label="Chọn ngày bắt đầu">
+                                  <CalendarIcon className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedContractStartDate}
+                                  onSelect={handleContractStartSelect}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="contract-end">Ngày kết thúc *</Label>
+                          <div className="mt-2 flex gap-2">
+                            <Input
+                              id="contract-end"
+                              type="text"
+                              value={contractEndDate}
+                              onChange={(event) => setContractEndDate(event.target.value)}
+                              placeholder="dd/mm/yyyy"
+                              className="flex-1"
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button type="button" variant="outline" size="icon" aria-label="Chọn ngày kết thúc">
+                                  <CalendarIcon className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedContractEndDate}
+                                  onSelect={handleContractEndSelect}
+                                  disabled={(date) =>
+                                    selectedContractStartDate ? date < selectedContractStartDate : false
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 rounded-lg border p-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <Label htmlFor="daily-start-date">Ngày bắt đầu *</Label>
+                            <div className="mt-2 flex gap-2">
+                              <Input
+                                id="daily-start-date"
+                                type="text"
+                                value={dailyStartDate}
+                                onChange={(event) => setDailyStartDate(event.target.value)}
+                                placeholder="dd/mm/yyyy"
+                                className="flex-1"
+                              />
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button type="button" variant="outline" size="icon" aria-label="Chọn ngày bắt đầu theo ngày">
+                                    <CalendarIcon className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                  <Calendar
+                                    mode="single"
+                                    selected={selectedDailyStartDate}
+                                    onSelect={handleDailyStartSelect}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </div>
+                          <div>
+                            <Label htmlFor="days-to-hire">Số ngày muốn thuê *</Label>
+                            <Input
+                              id="days-to-hire"
+                              type="number"
+                              min="1"
+                              value={daysToHire}
+                              onChange={(event) => setDaysToHire(event.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          <div>
+                            <Label htmlFor="daily-start">Từ mấy giờ *</Label>
+                            <Input
+                              id="daily-start"
+                              type="time"
+                              value={dailyStartTime}
+                              onChange={(event) => setDailyStartTime(event.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="daily-end">Đến mấy giờ *</Label>
+                            <Input
+                              id="daily-end"
+                              type="time"
+                              value={dailyEndTime}
+                              onChange={(event) => setDailyEndTime(event.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="workers-needed-daily">Cần bao nhiêu người *</Label>
+                            <Input
+                              id="workers-needed-daily"
+                              type="number"
+                              min="1"
+                              value={workersNeeded}
+                              onChange={(event) => setWorkersNeeded(event.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+              <div className="space-y-6">
                 <Card className="h-full">
                   <CardHeader>
                     <CardTitle>Chi tiết công việc</CardTitle>
-                    <CardDescription>Tiêu đề, danh mục và thu nhập.</CardDescription>
+                    <CardDescription>Tiêu đề, danh mục, thu nhập và địa điểm làm việc.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -813,27 +1033,21 @@ export function FarmerJobForm() {
                           placeholder="Ví dụ: 300000"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="workers-needed">Số lượng nhân công *</Label>
-                        <Input
-                          id="workers-needed"
-                          type="number"
-                          min="1"
-                          value={workersNeeded}
-                          onChange={(event) => setWorkersNeeded(event.target.value)}
-                        />
-                      </div>
+                      {scheduleType === "daily" ? (
+                        <div className="space-y-2">
+                          <Label htmlFor="workers-needed">Số lượng nhân công *</Label>
+                          <Input
+                            id="workers-needed"
+                            type="number"
+                            min="1"
+                            value={workersNeeded}
+                            onChange={(event) => setWorkersNeeded(event.target.value)}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="h-full">
-                  <CardHeader>
-                    <CardTitle>Địa điểm làm việc</CardTitle>
-                    <CardDescription>Chọn nông trại hoặc nhập địa điểm cụ thể.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 pt-2">
                       <Label htmlFor="farm-select">Nông trại *</Label>
                       <Popover open={isFarmPopoverOpen} onOpenChange={setIsFarmPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -915,7 +1129,7 @@ export function FarmerJobForm() {
                             {isSearchingLocation ? (
                               <p className="text-sm text-muted-foreground">Đang tìm địa điểm...</p>
                             ) : (
-                              <div className="max-h-[200px] overflow-auto space-y-1">
+                              <div className="max-h-50 overflow-auto space-y-1">
                                 {locationSuggestions.map((place) => (
                                   <button
                                     key={`${place.lat}-${place.lon}-${place.display_name}`}
@@ -944,8 +1158,8 @@ export function FarmerJobForm() {
                       ) : (
                         <div className="flex h-48 items-center justify-center bg-muted/10 p-4 text-center text-sm text-muted-foreground">
                           <div className="space-y-2">
-                             <MapPinned className="mx-auto h-8 w-8 opacity-50" />
-                             <p>Chọn nông trại hoặc nhập địa điểm để xem bản đồ</p>
+                            <MapPinned className="mx-auto h-8 w-8 opacity-50" />
+                            <p>Chọn nông trại hoặc nhập địa điểm để xem bản đồ</p>
                           </div>
                         </div>
                       )}
@@ -954,7 +1168,41 @@ export function FarmerJobForm() {
                 </Card>
               </div>
 
-              {/* <Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Kỹ năng</CardTitle>
+                    <CardDescription>Chọn kỹ năng cần thiết cho công việc.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 sm:grid-cols-2">
+                    {isLoadingSkills ? <p className="text-sm text-muted-foreground">Đang tải danh sách kỹ năng...</p> : null}
+                    {!isLoadingSkills && availableSkills.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Không có kỹ năng khả dụng.</p>
+                    ) : null}
+                    {availableSkills.map((skill) => {
+                      const isSelected = selectedSkillIds.includes(skill.id)
+
+                      return (
+                        <label
+                          key={skill.id}
+                          htmlFor={`skill-${skill.id}`}
+                          className={cn(
+                            "flex cursor-pointer items-center gap-3 rounded-lg border p-3",
+                            isSelected ? "border-primary bg-primary/5" : "border-border",
+                          )}
+                        >
+                          <Checkbox
+                            id={`skill-${skill.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSkill(skill.id)}
+                          />
+                          <span>{skill.name}</span>
+                        </label>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+
+              <Card>
                 <CardHeader>
                   <CardTitle>Yêu cầu</CardTitle>
                   <CardDescription>
@@ -989,43 +1237,11 @@ export function FarmerJobForm() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card> */}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Kinh nghiệm</CardTitle>
-                  <CardDescription>Chọn kỹ năng cần thiết cho công việc.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2">
-                  {isLoadingSkills ? <p className="text-sm text-muted-foreground">Đang tải danh sách kỹ năng...</p> : null}
-                  {!isLoadingSkills && availableSkills.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Không có kỹ năng khả dụng.</p>
-                  ) : null}
-                  {availableSkills.map((skill) => {
-                    const isSelected = selectedSkillIds.includes(skill.id)
-
-                    return (
-                      <label
-                        key={skill.id}
-                        htmlFor={`skill-${skill.id}`}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-3 rounded-lg border p-3",
-                          isSelected ? "border-primary bg-primary/5" : "border-border",
-                        )}
-                      >
-                        <Checkbox
-                          id={`skill-${skill.id}`}
-                          checked={isSelected}
-                          onCheckedChange={() => toggleSkill(skill.id)}
-                        />
-                        <span>{skill.name}</span>
-                      </label>
-                    )
-                  })}
-                </CardContent>
               </Card>
 
-              {/* <Card>
+
+
+              <Card>
                 <CardHeader>
                   <CardTitle>Quyền lợi</CardTitle>
                   <CardDescription>Farmer có thể tự thêm quyền lợi (bao ăn, nghỉ 15 phút, hỗ trợ đi lại...).</CardDescription>
@@ -1058,155 +1274,9 @@ export function FarmerJobForm() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card> */}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Thời gian làm việc</CardTitle>
-                  <CardDescription>Chọn theo khoán hoặc theo ngày theo đúng quy tắc bạn mô tả.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <RadioGroup
-                    value={scheduleType}
-                    onValueChange={(value) => setScheduleType(value as WorkScheduleType)}
-                    className="grid gap-3 sm:grid-cols-2"
-                  >
-                    <label
-                      htmlFor="schedule-contract"
-                      className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
-                        scheduleType === "contract" ? "border-primary bg-primary/5" : "border-border",
-                      )}
-                    >
-                      <RadioGroupItem id="schedule-contract" value="contract" className="mt-1" />
-                      <div>
-                        <p className="font-medium">Theo khoán</p>
-                        <p className="text-sm text-muted-foreground">Chọn ngày bắt đầu và ngày kết thúc.</p>
-                      </div>
-                    </label>
-
-                    <label
-                      htmlFor="schedule-daily"
-                      className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
-                        scheduleType === "daily" ? "border-primary bg-primary/5" : "border-border",
-                      )}
-                    >
-                      <RadioGroupItem id="schedule-daily" value="daily" className="mt-1" />
-                      <div>
-                        <p className="font-medium">Theo ngày</p>
-                        <p className="text-sm text-muted-foreground">Có số ngày muốn thuê và khung giờ cố định.</p>
-                      </div>
-                    </label>
-                  </RadioGroup>
-
-                  {scheduleType === "contract" ? (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <Label htmlFor="contract-start">Ngày bắt đầu *</Label>
-                        <div className="mt-2 flex gap-2">
-                          <Input
-                            id="contract-start"
-                            type="text"
-                            value={contractStartDate}
-                            onChange={(event) => setContractStartDate(event.target.value)}
-                            placeholder="dd/mm/yyyy"
-                            className="flex-1"
-                          />
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button type="button" variant="outline" size="icon" aria-label="Chọn ngày bắt đầu">
-                                <CalendarIcon className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
-                              <Calendar
-                                mode="single"
-                                selected={selectedContractStartDate}
-                                onSelect={handleContractStartSelect}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="contract-end">Ngày kết thúc *</Label>
-                        <div className="mt-2 flex gap-2">
-                          <Input
-                            id="contract-end"
-                            type="text"
-                            value={contractEndDate}
-                            onChange={(event) => setContractEndDate(event.target.value)}
-                            placeholder="dd/mm/yyyy"
-                            className="flex-1"
-                          />
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button type="button" variant="outline" size="icon" aria-label="Chọn ngày kết thúc">
-                                <CalendarIcon className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
-                              <Calendar
-                                mode="single"
-                                selected={selectedContractEndDate}
-                                onSelect={handleContractEndSelect}
-                                disabled={(date) =>
-                                  selectedContractStartDate ? date < selectedContractStartDate : false
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 rounded-lg border p-4">
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <div>
-                          <Label htmlFor="days-to-hire">Số ngày muốn thuê *</Label>
-                          <Input
-                            id="days-to-hire"
-                            type="number"
-                            min="1"
-                            value={daysToHire}
-                            onChange={(event) => setDaysToHire(event.target.value)}
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="daily-start">Từ mấy giờ *</Label>
-                          <Input
-                            id="daily-start"
-                            type="time"
-                            value={dailyStartTime}
-                            onChange={(event) => setDailyStartTime(event.target.value)}
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="daily-end">Đến mấy giờ *</Label>
-                          <Input
-                            id="daily-end"
-                            type="time"
-                            value={dailyEndTime}
-                            onChange={(event) => setDailyEndTime(event.target.value)}
-                            className="mt-2"
-                          />
-                        </div>
-                      </div>
-
-                      {hasDailyRuleError ? (
-                        <p className="text-sm font-medium text-destructive">
-                          Số lượng nhân công luôn phải lớn hơn hoặc bằng số ngày muốn thuê.
-                        </p>
-                      ) : null}
-                    </div>
-                  )}
-                </CardContent>
               </Card>
+
+              
 
               {submitError ? <p className="text-sm font-medium text-destructive">{submitError}</p> : null}
 
@@ -1234,7 +1304,7 @@ export function FarmerJobForm() {
                     <span className="font-medium">Thu nhập:</span> {formatCurrency(incomeNumber)}
                   </p>
                   <p>
-                    <span className="font-medium">Số nhân công cần:</span> {workersNeededNumber}
+                    <span className="font-medium">Số nhân công cần:</span> {scheduleType === "daily" ? workersNeededNumber : "Không bắt buộc"}
                   </p>
                   <p>
                     <span className="font-medium">Địa điểm:</span> {location}
@@ -1288,10 +1358,11 @@ export function FarmerJobForm() {
                     </p>
                   ) : (
                     <div className="mt-2 space-y-1 text-muted-foreground">
-                      <p>Theo ngày, thuê {daysToHireNumber} ngày.</p>
+                      <p>Theo ngày từ {formatDateDDMMYYYY(dailyStartDate)}, thuê {daysToHireNumber} ngày.</p>
                       <p>
                         Khung giờ cố định: {dailyStartTime} - {dailyEndTime}
                       </p>
+                      <p>Số lượng nhân công: {workersNeededNumber}</p>
                     </div>
                   )}
                 </div>
