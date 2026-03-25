@@ -46,7 +46,7 @@ export default function FarmerLayout({
     { icon: LayoutDashboard, label: "Tổng quan", href: "/farmer/dashboard" },
     { icon: Leaf, label: "Công việc", href: "/farmer/jobs" },
     { icon: PlusCircle, label: "Đăng tin", href: "/farmer/create-job" },
-    { icon: MessageCircle, label: "Tin nhắn", href: "/farmer/messages", badge: 3 },
+    { icon: MessageCircle, label: "Tin nhắn", href: "/farmer/messages"},
     { icon: Wallet, label: "Thanh toán", href: "/farmer/payments" },
   ];
   const [profile, setProfile] = useState<FarmerProfile | null>(null)
