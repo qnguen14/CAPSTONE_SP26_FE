@@ -11,6 +11,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -20,7 +27,7 @@ import { useToast } from "@/hooks/use-toast"
 import { handleApiError } from "@/lib/utils/error-handler"
 import { FarmService } from "@/libs/api/services/farm.service"
 import type { GetFarmResponse, UpdateFarmRequest } from "@/libs/api/types"
-import { Loader2, MapPin, Pencil, Plus, Star, Trash2, X, UploadCloud } from "lucide-react"
+import { Loader2, MapPin, Pencil, Plus, Star, Trash2, X, UploadCloud, Eye } from "lucide-react"
 import Image from "next/image"
 
 type FarmFormState = {
@@ -71,7 +78,7 @@ function toFormState(farm: GetFarmResponse): FarmFormState {
     livestockCount: farm.livestockCount || 0,
     areaSize: farm.areaSize || 0,
     isPrimary: farm.isPrimary,
-    images: farm.images || [],
+    images: Array.isArray(farm.imageUrl) ? farm.imageUrl : (farm.imageUrl ? [farm.imageUrl] : []),
   }
 }
 
@@ -137,6 +144,27 @@ export function FarmerFarmManager() {
   const [locationSuggestions, setLocationSuggestions] = useState<OSMPlace[]>([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+  const [viewingFarmId, setViewingFarmId] = useState<string | null>(null)
+  const [viewingFarmDetails, setViewingFarmDetails] = useState<GetFarmResponse | null>(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
+
+  const handleViewDetails = async (farmId: string) => {
+    setViewingFarmId(farmId)
+    setLoadingDetails(true)
+    try {
+      const response = await FarmService.getFarm(farmId)
+      setViewingFarmDetails(response.data)
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: handleApiError(error, { defaultMessage: "Không thể tải thông tin chi tiết nông trại" }),
+        variant: "destructive",
+      })
+      setViewingFarmId(null)
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
 
   useEffect(() => {
     const loadFarms = async () => {
@@ -209,24 +237,53 @@ export function FarmerFarmManager() {
     }))
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return
     const newFiles = Array.from(e.target.files)
     
+    if (!editingFarmId) {
+      toast({
+        title: "Thông báo",
+        description: "Vui lòng thêm nông trại trước khi tải ảnh lên.",
+      })
+      e.target.value = ""
+      return
+    }
+
     if (formData.images.length + newFiles.length > 3) {
       toast({
         title: "Lỗi",
         description: "Chỉ được upload tối đa 3 hình ảnh.",
         variant: "destructive",
       })
+      e.target.value = ""
       return
     }
 
-    const newImageUrls = newFiles.map((file) => URL.createObjectURL(file))
-    handleFieldChange("images", [...formData.images, ...newImageUrls])
-    
-    // Reset file input
-    e.target.value = ""
+    try {
+      setSubmitting(true)
+      const uploadPromises = newFiles.map((file) => FarmService.uploadImage(editingFarmId, file))
+      const results = await Promise.all(uploadPromises)
+      
+      const newImageUrls = results.map((res) => res.data)
+      handleFieldChange("images", [...formData.images, ...newImageUrls])
+      
+      toast({
+        title: "Thành công",
+        description: "Đã tải ảnh lên.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: handleApiError(error, {
+          defaultMessage: "Không thể tải ảnh lên",
+        }),
+        variant: "destructive",
+      })
+    } finally {
+      setSubmitting(false)
+      e.target.value = ""
+    }
   }
 
   const removeImage = (indexToRemove: number) => {
@@ -366,7 +423,7 @@ export function FarmerFarmManager() {
       livestockCount: Number(formData.livestockCount) || 0,
       areaSize: Number(formData.areaSize) || 0,
       isPrimary: formData.isPrimary,
-      images: formData.images,
+      imageUrl: formData.images,
     }
 
     try {
@@ -532,34 +589,42 @@ export function FarmerFarmManager() {
                     {formData.images.length}/3
                   </span>
                 </div>
-                {formData.images.length > 0 && (
-                  <div className="flex gap-4 overflow-x-auto pb-2">
-                    {formData.images.map((img, index) => (
-                      <div key={index} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border">
-                        <Image src={img} alt={`Farm image ${index + 1}`} fill className="object-cover" unoptimized />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                {!editingFarmId ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    Vui lòng thêm nông trại trước khi tải ảnh lên.
+                  </p>
+                ) : (
+                  <>
+                    {formData.images.length > 0 && (
+                      <div className="flex gap-4 overflow-x-auto pb-2">
+                        {formData.images.map((img, index) => (
+                          <div key={index} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border">
+                            <Image src={img} alt={`Farm image ${index + 1}`} fill className="object-cover" unoptimized />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-                {formData.images.length < 3 && (
-                  <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed hover:bg-muted/50">
-                    <UploadCloud className="h-6 w-6 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Nhấn để tải ảnh lên</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
+                    )}
+                    {formData.images.length < 3 && (
+                      <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed hover:bg-muted/50">
+                        <UploadCloud className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Nhấn để tải ảnh lên</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                      </label>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -652,20 +717,31 @@ export function FarmerFarmManager() {
                           <span>Vĩ độ: {farm.latitude}</span>
                           <span>Kinh độ: {farm.longitude}</span>
                         </div>
-                        {farm.images && farm.images.length > 0 && (
+                        {Array.isArray(farm.imageUrl) && farm.imageUrl.length > 0 && (
                           <div className="flex gap-2 mt-2">
-                            {farm.images.map((img, index) => (
+                            {farm.imageUrl.map((img, index) => (
                               <div key={index} className="relative h-12 w-12 overflow-hidden rounded-md border">
                                 <Image src={img} alt={`Farm image ${index + 1}`} fill className="object-cover" unoptimized />
                               </div>
                             ))}
                           </div>
                         )}
+                        {typeof farm.imageUrl === 'string' && farm.imageUrl !== "" && (
+                          <div className="flex gap-2 mt-2">
+                            <div className="relative h-12 w-12 overflow-hidden rounded-md border">
+                              <Image src={farm.imageUrl} alt={`Farm image`} fill className="object-cover" unoptimized />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => farmId && handleViewDetails(farmId)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Chi tiết
+                        </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(farm)}>
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4 mr-1" />
                           Sửa
                         </Button>
                         <Button
@@ -676,9 +752,9 @@ export function FarmerFarmManager() {
                           disabled={!farmId || deletingFarmId === farmId}
                         >
                           {deletingFarmId === farmId ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="mr-1 h-4 w-4" />
                           )}
                           Xóa
                         </Button>
@@ -721,6 +797,82 @@ export function FarmerFarmManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={Boolean(viewingFarmId)} onOpenChange={(open) => {
+        if (!open) {
+          setViewingFarmId(null)
+          setTimeout(() => setViewingFarmDetails(null), 300)
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{viewingFarmDetails?.locationName}</DialogTitle>
+            <DialogDescription>
+              {viewingFarmDetails?.address}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingDetails ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-agro-green" />
+              </div>
+            ) : viewingFarmDetails ? (
+              <div className="space-y-4 text-sm">
+                {Array.isArray(viewingFarmDetails.imageUrl) && viewingFarmDetails.imageUrl.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {viewingFarmDetails.imageUrl.map((img, i) => (
+                      <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border">
+                        <Image src={img} alt={`Farm image ${i}`} fill className="object-cover" unoptimized />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {typeof viewingFarmDetails.imageUrl === 'string' && viewingFarmDetails.imageUrl !== "" && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border">
+                      <Image src={viewingFarmDetails.imageUrl} alt={`Farm image`} fill className="object-cover" unoptimized />
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Loại:</span>
+                    <p className="font-medium text-base">{viewingFarmDetails.farmTypeName || (viewingFarmDetails.farmType === 1 ? "Chăn nuôi" : "Trồng trọt")}</p>
+                  </div>
+                  {viewingFarmDetails.farmType === 2 ? (
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Diện tích:</span>
+                      <p className="font-medium text-base">{viewingFarmDetails.areaSize ? `${viewingFarmDetails.areaSize} m²` : "Không có"}</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Số lượng vật nuôi:</span>
+                      <p className="font-medium text-base">{viewingFarmDetails.livestockCount ? `${viewingFarmDetails.livestockCount} con` : "0 con"}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Trạng thái:</span>
+                    <p className="font-medium text-base">{viewingFarmDetails.isPrimary ? "Địa điểm chính" : "Phụ"}</p>
+                  </div>
+                  {(viewingFarmDetails.latitude || viewingFarmDetails.longitude) && (
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Tọa độ:</span>
+                      <p className="font-medium text-base">
+                        {viewingFarmDetails.latitude},{' '}
+                        {viewingFarmDetails.longitude}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="py-6 text-center text-muted-foreground">
+                Không có dữ liệu
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

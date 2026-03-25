@@ -71,11 +71,11 @@ export interface UpdateFarmRequest {
   latitude: number,
   longitude: number,
   locationName: string,
-  farmType: number,
+  imageUrl: string [], 
+  farmType: number, 
   livestockCount: number,
   areaSize: number,
   isPrimary: boolean,
-  images?: string[] // Mock up for image upload
 }
 
 export interface GetFarmResponse {
@@ -85,6 +85,7 @@ export interface GetFarmResponse {
   latitude: number,
   longitude: number,
   locationName: string,
+  imageUrl: string [],
   farmType: number,
   farmTypeName: string,
   livestockCount: number,

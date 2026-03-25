@@ -45,6 +45,7 @@ export const API_ENDPOINTS = {
     ADD_FARM: '/farm',
     UPDATE_FARM: (id: string) => `/farm/${id}`,
     REMOVE_FARM: (id: string) => `/farm/${id}`,
+    UPLOAD_IMAGE: (id: string) => `/farm/${id}/upload-image`,
   },
 
   // Admin
