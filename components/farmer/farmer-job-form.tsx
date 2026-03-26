@@ -913,7 +913,7 @@ export function FarmerJobForm() {
           {step === 1 ? (
             <div className="grid gap-8 lg:grid-cols-12">
               {/* Left Column (8 cols) */}
-              <div className="lg:col-span-8 space-y-8">
+              <div className="lg:col-span-7  space-y-8">
                  {/* Card 1: Job Info */}
                  <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
                    <CardHeader className="bg-muted/10 pb-4">
@@ -1105,7 +1105,7 @@ export function FarmerJobForm() {
               </div>
 
               {/* Right Column (4 cols) - Sticky */}
-              <div className="lg:col-span-4 space-y-6">
+              <div className="lg:col-span-5 space-y-6">
                  {/* Schedule Card */}
                  <Card className="shadow-md border-t-4 border-t-purple-500">
                     <CardHeader className="bg-muted/10 pb-4">
