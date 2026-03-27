@@ -29,12 +29,13 @@ import { farmerService } from "@/libs/api/services/farmer.service"
 import { FarmService } from "@/libs/api/services/farm.service"
 import { jobCategoryService } from "@/libs/api/services/job-category.service"
 import { skillService } from "@/libs/api/services/skill.service"
-import type { CreateJobRequest, GetFarmResponse, JobCategory, Skill } from "@/libs/api/types"
+import type { CreateJobRequest, GetFarmResponse, Job, JobCategory, Skill, UpdateJobRequest } from "@/libs/api/types"
 import { cn } from "@/libs/utils"
 
 type WorkScheduleType = "contract" | "daily"
 
 type OSMPlace = {
+  place_id?: string | number
   display_name: string
   lat: string
   lon: string
@@ -60,14 +61,16 @@ type PostedJobPreview = {
   dailyEndTime?: string
 }
 
+type FarmerJobFormProps = {
+  mode?: "create" | "edit"
+  jobId?: string
+}
+
 const DEFAULT_FARM_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 const DEFAULT_JOB_CATEGORY_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 const JOB_TYPE_CONTRACT_ID = 1
 const JOB_TYPE_DAILY_ID = 2
-const DEFAULT_WAGE_TYPE_ID = 1
-const DEFAULT_PAYMENT_METHOD_ID = 1
-const DEFAULT_STATUS_ID = 1
-const DEFAULT_GENDER_PREFERENCE = "any"
+const DEFAULT_STATUS_ID = 2
 const DEFAULT_IS_URGENT = false
 
 const OSM_REVERSE_URL = process.env.NEXT_PUBLIC_OSM_REVERSE_URL || "https://nominatim.openstreetmap.org/reverse"
@@ -156,7 +159,20 @@ const getSelectionSpanInDays = (sortedDates: Date[]) => {
   return Math.floor((last.getTime() - first.getTime()) / millisecondsPerDay) + 1
 }
 
-export function FarmerJobForm() {
+const extractEditableDescription = (rawDescription: string) => {
+  return rawDescription
+    .split("\n")
+    .filter((line) => {
+      const trimmedLine = line.trim()
+      return !trimmedLine.startsWith("Yêu cầu:") && !trimmedLine.startsWith("Quyền lợi:") && !trimmedLine.startsWith("Lịch làm:")
+    })
+    .join("\n")
+    .trim()
+}
+
+export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
+  const isEditMode = mode === "edit" && Boolean(jobId)
+
   const [step, setStep] = useState<1 | 2>(1)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -173,6 +189,7 @@ export function FarmerJobForm() {
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([])
   const [isLoadingSkills, setIsLoadingSkills] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingExistingJob, setIsLoadingExistingJob] = useState(false)
 
   const [benefits, setBenefits] = useState<string[]>(["Bao ăn"])
   const [newBenefit, setNewBenefit] = useState("")
@@ -362,6 +379,72 @@ export function FarmerJobForm() {
 
     void loadSkills()
   }, [])
+
+  useEffect(() => {
+    const hydrateJobForEdit = async () => {
+      if (!isEditMode || !jobId) {
+        return
+      }
+
+      try {
+        setIsLoadingExistingJob(true)
+        const response = await farmerService.getJobDetail(jobId)
+        const existingJob = response.data as Job
+
+        setTitle(existingJob.title ?? "")
+        setDescription(extractEditableDescription(existingJob.description ?? ""))
+        setIncome(String(existingJob.wageAmount ?? ""))
+        setWorkersNeeded(String(existingJob.workersNeeded ?? 1))
+        setLocation(existingJob.address ?? "")
+        setLocationLat(existingJob.farm?.latitude)
+        setLocationLng(existingJob.farm?.longitude)
+        setRequirements(existingJob.requirements?.length ? existingJob.requirements : ["Có sức khỏe tốt"])
+        setBenefits(existingJob.privileges?.length ? existingJob.privileges : ["Bao ăn"])
+        setSelectedSkillIds((existingJob.jobSkillRequirements ?? []).map((skill) => skill.id).filter(Boolean))
+        setSelectedJobCategoryId(existingJob.jobCategory?.id ?? DEFAULT_JOB_CATEGORY_ID)
+        setSelectedFarmId(existingJob.farm?.farmId || (existingJob.farm as any)?.id || DEFAULT_FARM_ID)
+        setIsUrgent(Boolean(existingJob.isUrgent))
+
+        const normalizedStartTime = existingJob.startTime ? existingJob.startTime.slice(0, 5) : "09:00"
+        const normalizedEndTime = existingJob.endTime ? existingJob.endTime.slice(0, 5) : "17:00"
+        setDailyStartTime(normalizedStartTime)
+        setDailyEndTime(normalizedEndTime)
+
+        if (existingJob.jobTypeId === JOB_TYPE_DAILY_ID) {
+          setScheduleType("daily")
+          setContractStartDate("")
+          setContractEndDate("")
+
+          const selectedDates = (existingJob.selectedDays ?? [])
+            .map((item) => {
+              const date = new Date(item)
+              if (Number.isNaN(date.getTime())) {
+                return null
+              }
+              return startOfDay(date)
+            })
+            .filter((item): item is Date => item instanceof Date)
+
+          setSelectedDailyDates(selectedDates)
+        } else {
+          setScheduleType("contract")
+          setSelectedDailyDates([])
+
+          const startDate = existingJob.startDate ? formatDateDDMMYYYY(existingJob.startDate) : ""
+          const endDate = existingJob.endDate ? formatDateDDMMYYYY(existingJob.endDate) : ""
+          setContractStartDate(startDate)
+          setContractEndDate(endDate)
+        }
+      } catch (error) {
+        console.error(error)
+        setSubmitError("Không thể tải dữ liệu tin tuyển dụng để chỉnh sửa.")
+      } finally {
+        setIsLoadingExistingJob(false)
+      }
+    }
+
+    void hydrateJobForEdit()
+  }, [isEditMode, jobId])
 
   useEffect(() => {
     const loadJobCategories = async () => {
@@ -756,7 +839,7 @@ export function FarmerJobForm() {
 
       const jobTypeId = scheduleType === "daily" ? JOB_TYPE_DAILY_ID : JOB_TYPE_CONTRACT_ID
 
-      const payload: CreateJobRequest = {
+      const payload: UpdateJobRequest = {
         skillIds: selectedSkillIds,
         farmId: selectedFarmId || DEFAULT_FARM_ID,
         jobCategoryId: selectedJobCategoryId || DEFAULT_JOB_CATEGORY_ID,
@@ -772,10 +855,8 @@ export function FarmerJobForm() {
         requirements,
         privileges: benefits,
         wageAmount: incomeNumber,
-         workersNeeded: workersNeededNumber,
-         workersAccepted: 0,
-        publishedAt: nowISO,
-        createdAt: nowISO,
+        workersNeeded: workersNeededNumber,
+        workersAccepted: 0,
         updatedAt: nowISO,
         isUrgent,
         statusId: DEFAULT_STATUS_ID,
@@ -784,17 +865,23 @@ export function FarmerJobForm() {
     try {
       setIsSubmitting(true)
       setSubmitError(null)
-      const response = await farmerService.createJob(payload)
-      const createdJob = response.data
+      const response = isEditMode && jobId
+        ? await farmerService.updateJob(jobId, payload)
+        : await farmerService.createJob({
+            ...(payload as CreateJobRequest),
+            publishedAt: nowISO,
+            createdAt: nowISO,
+          })
+      const savedJob = response.data
 
       const postedPayload: PostedJobPreview = {
-        id: createdJob.id,
-        createdAt: createdJob.createdAt ?? nowISO,
-        title: createdJob.title ?? title.trim(),
-        income: createdJob.wageAmount ?? incomeNumber,
+        id: savedJob.id,
+        createdAt: savedJob.createdAt ?? nowISO,
+        title: savedJob.title ?? title.trim(),
+        income: savedJob.wageAmount ?? incomeNumber,
         workersNeeded:
-          createdJob.workersNeeded ?? (scheduleType === "daily" ? workersNeededNumber : 1),
-        location: createdJob.address ?? location.trim(),
+          savedJob.workersNeeded ?? (scheduleType === "daily" ? workersNeededNumber : 1),
+        location: savedJob.address ?? location.trim(),
         locationLat,
         locationLng,
         requirements,
@@ -811,7 +898,13 @@ export function FarmerJobForm() {
       setPostedJob(postedPayload)
     } catch (error: any) {
       const apiMessage = error?.response?.data?.message
-      setSubmitError(typeof apiMessage === "string" ? apiMessage : "Không thể đăng tin công việc. Vui lòng thử lại.")
+      setSubmitError(
+        typeof apiMessage === "string"
+          ? apiMessage
+          : isEditMode
+            ? "Không thể cập nhật tin công việc. Vui lòng thử lại."
+            : "Không thể đăng tin công việc. Vui lòng thử lại.",
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -843,6 +936,14 @@ export function FarmerJobForm() {
     setPostedJob(null)
   }
 
+  if (isLoadingExistingJob) {
+    return (
+      <div className="mx-auto flex max-w-6xl items-center justify-center py-24">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent" />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b">
@@ -853,9 +954,13 @@ export function FarmerJobForm() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Đăng tin tuyển dụng</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              {isEditMode ? "Chỉnh sửa tin tuyển dụng" : "Đăng tin tuyển dụng"}
+            </h1>
             <p className="text-muted-foreground mt-1 mb-2">
-              Tạo công việc mới và tìm kiếm nhân sự phù hợp cho nông trại của bạn.
+              {isEditMode
+                ? "Cập nhật nội dung bài đăng để phù hợp hơn với nhu cầu tuyển dụng hiện tại."
+                : "Tạo công việc mới và tìm kiếm nhân sự phù hợp cho nông trại của bạn."}
             </p>
           </div>
         </div>
@@ -893,9 +998,13 @@ export function FarmerJobForm() {
                 <CheckCheck className="h-8 w-8" />
               </div>
               <div className="space-y-1">
-                <CardTitle className="text-2xl text-green-700 dark:text-green-400">Đăng tin thành công!</CardTitle>
+                <CardTitle className="text-2xl text-green-700 dark:text-green-400">
+                  {isEditMode ? "Cập nhật tin thành công!" : "Đăng tin thành công!"}
+                </CardTitle>
                 <CardDescription className="text-base text-green-600/80 dark:text-green-400/80">
-                  Tin tuyển dụng của bạn đã được công khai. Ứng viên sẽ sớm liên hệ với bạn.
+                  {isEditMode
+                    ? "Thông tin bài đăng đã được cập nhật thành công."
+                    : "Tin tuyển dụng của bạn đã được công khai. Ứng viên sẽ sớm liên hệ với bạn."}
                 </CardDescription>
               </div>
             </div>
@@ -931,9 +1040,15 @@ export function FarmerJobForm() {
               <Button variant="outline" size="lg" asChild className="border-green-200 hover:bg-green-50 text-green-700 dark:border-green-800 dark:hover:bg-green-900/20">
                 <Link href="/farmer/jobs">Quản lý tin đăng</Link>
               </Button>
-              <Button size="lg" onClick={resetAll} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
-                <Plus className="mr-2 h-4 w-4" /> Đăng tin khác
-              </Button>
+              {isEditMode ? (
+                <Button size="lg" onClick={() => setPostedJob(null)} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
+                  Chỉnh sửa lại
+                </Button>
+              ) : (
+                <Button size="lg" onClick={resetAll} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
+                  <Plus className="mr-2 h-4 w-4" /> Đăng tin khác
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1366,7 +1481,7 @@ export function FarmerJobForm() {
                       <Link href="/farmer/jobs">Hủy bỏ</Link>
                    </Button>
                    <Button type="button" onClick={goToPreview} className="flex-1 sm:flex-none shadow-sm">
-                      Xem trước tin đăng <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                     {isEditMode ? "Xem trước cập nhật" : "Xem trước tin đăng"} <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
                    </Button>
                  </div>
               </div>
@@ -1490,7 +1605,7 @@ export function FarmerJobForm() {
                             <ArrowLeft className="mr-2 h-4 w-4" /> Chỉnh sửa
                          </Button>
                          <Button type="button" size="lg" onClick={submitJob} disabled={isSubmitting} className="flex-1 sm:flex-none shadow-md min-w-[200px]">
-                            {isSubmitting ? "Đang xử lý..." : "Xác nhận & Đăng tin"}
+                           {isSubmitting ? "Đang xử lý..." : isEditMode ? "Xác nhận & Cập nhật" : "Xác nhận & Đăng tin"}
                          </Button>
                       </div>
                    </CardContent>

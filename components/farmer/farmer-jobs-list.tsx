@@ -14,6 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import {
@@ -52,6 +62,8 @@ export function FarmerJobsList() {
   const [applications, setApplications] = useState<Application[]>([])
   const [isLoadingApplications, setIsLoadingApplications] = useState(false)
   const [applicationsError, setApplicationsError] = useState<string | null>(null)
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
+  const [jobPendingDelete, setJobPendingDelete] = useState<Job | null>(null)
 
   // For combo boxes
   const [categories, setCategories] = useState<JobCategory[]>([])
@@ -276,6 +288,20 @@ export function FarmerJobsList() {
     }
   }
 
+  const handleDeleteJob = async (job: Job) => {
+    try {
+      setDeletingJobId(job.id)
+      await farmerService.deleteJob(job.id)
+      setJobs((currentJobs) => currentJobs.filter((currentJob) => currentJob.id !== job.id))
+      setJobPendingDelete(null)
+    } catch (deleteError) {
+      console.error(deleteError)
+      setError("Không thể xóa bài đăng. Vui lòng thử lại.")
+    } finally {
+      setDeletingJobId(null)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
@@ -458,22 +484,24 @@ export function FarmerJobsList() {
                                 Xem chi tiết
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => void openApplicationsDialog(job)}>
-                              <Users className="mr-2 h-4 w-4 text-muted-foreground" />
-                              Xem ứng viên
+                            <DropdownMenuItem asChild className="cursor-pointer">
+                              <Link href={`/farmer/jobs/${job.id}/edit`}>
+                                <Edit className="mr-2 h-4 w-4 text-muted-foreground" />
+                                Chỉnh sửa
+                              </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
-                              <Edit className="mr-2 h-4 w-4 text-muted-foreground" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
+                            {/* <DropdownMenuItem className="cursor-pointer">
                               <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
                               Đăng lại
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive cursor-pointer"
+                              onClick={() => setJobPendingDelete(job)}
+                              disabled={deletingJobId === job.id}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Xóa tin
+                              {deletingJobId === job.id ? "Đang xóa..." : "Xóa tin"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -497,18 +525,6 @@ export function FarmerJobsList() {
                       <Users className="h-4 w-4 shrink-0 text-amber-500" />
                       <span className="truncate">{job.workersAccepted}/{job.workersNeeded} người</span>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/20"
-                      onClick={() => void openApplicationsDialog(job)}
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      Xem ứng viên
-                    </Button>
                   </div>
 
                   {normalizeStatus(job.status) !== "completed" && (
@@ -548,18 +564,24 @@ export function FarmerJobsList() {
                             Xem chi tiết
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Edit className="mr-2 h-4 w-4 text-muted-foreground" />
-                          Chỉnh sửa
+                        <DropdownMenuItem asChild className="cursor-pointer">
+                          <Link href={`/farmer/jobs/${job.id}/edit`}>
+                            <Edit className="mr-2 h-4 w-4 text-muted-foreground" />
+                            Chỉnh sửa
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem className="cursor-pointer">
                           <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
                           Đăng lại
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive cursor-pointer"
+                          onClick={() => setJobPendingDelete(job)}
+                          disabled={deletingJobId === job.id}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Xóa tin
+                          {deletingJobId === job.id ? "Đang xóa..." : "Xóa tin"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -581,59 +603,39 @@ export function FarmerJobsList() {
         ))}
       </div>
 
-      <Dialog open={isApplicationsDialogOpen} onOpenChange={setIsApplicationsDialogOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Ứng viên của bài đăng</DialogTitle>
-            <DialogDescription>
-              {selectedJobForApplications
-                ? `Bài đăng: ${selectedJobForApplications.title}`
-                : "Danh sách ứng viên"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-            {isLoadingApplications ? (
-              <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed">
-                <Loader2 className="mb-2 h-6 w-6 animate-spin text-emerald-600" />
-                <p className="text-sm text-muted-foreground">Đang tải danh sách ứng viên...</p>
-              </div>
-            ) : null}
-
-            {!isLoadingApplications && applicationsError ? (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
-                {applicationsError}
-              </div>
-            ) : null}
-
-            {!isLoadingApplications && !applicationsError && applications.length === 0 ? (
-              <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed bg-slate-50/70 text-center dark:bg-slate-900/30">
-                <Users className="mb-2 h-6 w-6 text-muted-foreground" />
-                <p className="text-sm font-medium">Chưa có ứng viên</p>
-                <p className="text-xs text-muted-foreground">Bài đăng này chưa nhận được hồ sơ ứng tuyển.</p>
-              </div>
-            ) : null}
-
-            {!isLoadingApplications && !applicationsError && applications.length > 0
-              ? applications.map((application) => (
-                  <div
-                    key={application.id}
-                    className="rounded-xl border bg-slate-50/60 p-4 shadow-sm dark:bg-slate-900/30"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground">{application.workerName || "Ứng viên"}</p>
-                        <p className="text-sm text-muted-foreground">SĐT: {application.workerPhone || "-"}</p>
-                        <p className="text-xs text-muted-foreground">Nộp hồ sơ: {formatDate(application.appliedAt)}</p>
-                      </div>
-                      <div>{getApplicationStatusBadge(application.status)}</div>
-                    </div>
-                  </div>
-                ))
-              : null}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog
+        open={Boolean(jobPendingDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deletingJobId) {
+            setJobPendingDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa bài đăng?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {jobPendingDelete
+                ? `Bạn có chắc muốn xóa bài đăng "${jobPendingDelete.title}"? Hành động này không thể hoàn tác.`
+                : "Bạn có chắc muốn xóa bài đăng này?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingJobId)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (jobPendingDelete) {
+                  void handleDeleteJob(jobPendingDelete)
+                }
+              }}
+              disabled={Boolean(deletingJobId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingJobId ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   )
