@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { authService } from "@/libs/api/services/auth.service";
+import { farmerService } from "@/libs/api/services/farmer.service";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { handleAuthError } from "@/libs/utils/error-handler";
@@ -196,10 +197,33 @@ export default function LoginPage() {
 
         toast({
           title: "Thành công",
-          description: "Đăng nhập thành công. Đang chuyển hướng...",
+          description: response.message || "Đăng nhập thành công. Đang kiểm tra thông tin...",
           variant: "default",
         });
         
+        try {
+          if (role === "farmer") {
+            const profileRes = await farmerService.getProfile();
+            const profile = profileRes.data;
+            if (!profile?.contactName && !profile?.address) {
+               router.push("/farmer/setup-profile");
+               return;
+            }
+          }
+        } catch (profileError: any) {
+             const statusCode = profileError?.response?.status;
+             const backendMessage = profileError?.response?.data?.message;
+             const isProfileMissing =
+               statusCode === 500 &&
+               typeof backendMessage === "string" &&
+               backendMessage.toLowerCase().includes("farmer profile not found");
+             
+             if (isProfileMissing || statusCode === 404) {
+               router.push("/farmer/setup-profile");
+               return;
+             }
+        }
+
         // Redirect by role after a short delay
         setTimeout(() => {
           router.push(role === "admin" ? "/admin" : "/farmer/dashboard");

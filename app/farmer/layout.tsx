@@ -67,16 +67,28 @@ export default function FarmerLayout({
       try {
         const response = await farmerService.getProfile();
         setProfile(response.data);
-        setIsProfileMissing(false);
+        // Also check if any requisite fields are missing 
+        if (!response.data?.contactName && !response.data?.address) {
+          setIsProfileMissing(true);
+          if (!pathname.startsWith("/farmer/setup-profile")) {
+            router.replace("/farmer/setup-profile");
+          }
+        } else {
+          setIsProfileMissing(false);
+        }
       } catch (error: any) {
         const statusCode = error?.response?.status;
-        if (statusCode === 500) {
+        const backendMessage = error?.response?.data?.message;
+
+        const profileNotFound = (statusCode === 500 && typeof backendMessage === "string" && backendMessage.toLowerCase().includes("farmer profile not found")) || statusCode === 404;
+
+        if (profileNotFound) {
           setIsProfileMissing(true);
           setProfile(null);
 
           // Force users with missing profile to complete settings first.
-          if (!pathname.startsWith("/farmer/settings")) {
-            router.replace("/farmer/settings?setup=required");
+          if (!pathname.startsWith("/farmer/setup-profile")) {
+            router.replace("/farmer/setup-profile");
           }
         } else {
           console.error("Failed to fetch farmer profile:", error);
@@ -90,8 +102,8 @@ export default function FarmerLayout({
   }, [isAuthenticated, pathname, router]);
 
   useEffect(() => {
-    if (isAuthenticated && isProfileMissing && !pathname.startsWith("/farmer/settings")) {
-      router.replace("/farmer/settings?setup=required");
+    if (isAuthenticated && isProfileMissing && !pathname.startsWith("/farmer/setup-profile")) {
+      router.replace("/farmer/setup-profile");
     }
   }, [isAuthenticated, isProfileMissing, pathname, router]);
 

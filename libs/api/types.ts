@@ -109,17 +109,17 @@ export interface GoogleLoginRequest {
 // Farmer Types
 
 export interface UpdateFarmerRequest {
-  organizationName?: string;
   contactName?: string;
-  contactNumber?: string;
-  cooperativeName?: string;
-  farmType?: string;
+  address?: string;
+  dateOfBirth?: string;
   avatarUrl?: string;
 }
 export interface FarmerProfile {
   id: string;
   userId: string;
   contactName: string;
+  address: string;
+  dateOfBirth: string;
   averageRating: number;
   totalJobsPosted: number;
   totalJobsCompleted: number;
@@ -130,7 +130,6 @@ export interface FarmerProfile {
     id: string;
     email: string;
     phoneNumber: string;
-    address: string;
     passwordHash: string;
     role: string;
     createdAt: string;

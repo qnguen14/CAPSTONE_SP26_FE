@@ -2,6 +2,7 @@
 
 import { GoogleLogin } from '@react-oauth/google';
 import { authService } from '@/libs/api/services/auth.service';
+import { farmerService } from '@/libs/api/services/farmer.service';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
@@ -120,6 +121,30 @@ export function GoogleLoginButton({ roleId, showDivider = false, onSuccess, onEr
         });
         
         onSuccess?.();
+
+        try {
+          if (role === 'farmer') {
+            const profileRes = await farmerService.getProfile();
+            const profile = profileRes.data;
+            if (!profile?.contactName && !profile?.address) {
+               router.push('/farmer/setup-profile');
+               return;
+            }
+          }
+        } catch (profileError: any) {
+           const statusCode = profileError?.response?.status;
+           const backendMessage = profileError?.response?.data?.message;
+           const isProfileMissing =
+             statusCode === 500 &&
+             typeof backendMessage === "string" &&
+             backendMessage.toLowerCase().includes("farmer profile not found");
+           
+           if (isProfileMissing || statusCode === 404) {
+             router.push("/farmer/setup-profile");
+             return;
+           }
+        }
+        
         router.push(role === 'admin' ? '/admin' : '/farmer/dashboard');
       } else {
         toast({
