@@ -2,9 +2,8 @@
 
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Check, CheckCheck, ChevronsUpDown, MapPin, MapPinned, Plus, X, Calendar as CalendarIcon, Briefcase, Banknote, Users, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign } from "lucide-react"
+import { ArrowLeft, Check, CheckCheck, ChevronsUpDown, MapPin,  Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon } from "lucide-react"
 import { eachDayOfInterval, format, isSameDay, startOfDay } from "date-fns"
-import { vi } from "date-fns/locale"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -21,7 +20,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { FarmerFarmManager } from "@/components/farmer/farmer-farm-manager"
 import { Switch } from "@/components/ui/switch"
 import { TimePicker } from "@/components/ui/time-picker"
 import { OsmLocationPicker } from "@/components/farmer/osm-location-picker"
@@ -132,7 +132,7 @@ const buildOSMEmbedUrl = (lat: number, lng: number) => {
   const top = lat + delta
   const bottom = lat - delta
 
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${left},${bottom},${right},${top}&layer=mapnik&marker=${lat},${lng}`
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${left},${bottom},${right},${top}&layer=mapnik`
 }
 
 const normalizeDay = (date: Date) => startOfDay(date)
@@ -172,6 +172,7 @@ const extractEditableDescription = (rawDescription: string) => {
 }
 
 export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
+  const [isFarmManagerDialogOpen, setIsFarmManagerDialogOpen] = useState(false)
   const isEditMode = mode === "edit" && Boolean(jobId)
 
   const [step, setStep] = useState<1 | 2>(1)
@@ -1275,20 +1276,17 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Tiền công (VNĐ)</Label>
                     <div className="relative">
-                      {/* <div className="absolute left-3 top-2.5 text-muted-foreground"><div className="h-4 w-4">VNĐ</div></div> */}
+                      <div className="absolute left-3 top-2.5 text-muted-foreground text-xs pr-3">VNĐ</div>
                       <Input
                         type="number"
                         min="0"
                         value={income}
                         onChange={(e) => setIncome(e.target.value)}
-                        className="pl-9 text-lg font-medium text-teal-700 dark:text-teal-400"
+                        className="pl-12 text-lg font-medium text-teal-700 dark:text-teal-400"
                         placeholder="300,000"
                       />
                     </div>
-                  </div>
                 </CardContent>
               </Card>
 
@@ -1344,8 +1342,53 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                             </CommandGroup>
                           </CommandList>
                         </Command>
+                        <div className="border-t mt-2 pt-2">
+                          <Button
+                            variant="ghost"
+                            className="flex justify-start gap-2 text-primary mb-2 ml-2"
+                            onClick={() => {
+                              setIsFarmPopoverOpen(false)
+                              setIsFarmManagerDialogOpen(true)
+                            }}
+                          >
+                            <Plus className="h-4 w-4" /> Thêm địa điểm
+                          </Button>
+                        </div>
                       </PopoverContent>
                     </Popover>
+
+                    {/* Farm Manager Dialog */}
+                    <Dialog open={isFarmManagerDialogOpen} onOpenChange={(open) => {
+                      setIsFarmManagerDialogOpen(open)
+                      if (!open) {
+                        // Refresh farm list after closing dialog
+                        // (re-run loadFarms logic)
+                        (async () => {
+                          try {
+                            setIsLoadingFarms(true)
+                            const response = await FarmService.getFarms()
+                            const payload = response.data as GetFarmResponse[] | { data?: GetFarmResponse[] }
+                            const fetchedFarms = Array.isArray(payload)
+                              ? payload
+                              : Array.isArray(payload?.data)
+                                ? payload.data
+                                : []
+                            setFarms(fetchedFarms)
+                          } catch (error) {
+                            setFarms([])
+                          } finally {
+                            setIsLoadingFarms(false)
+                          }
+                        })()
+                      }
+                    }}>
+                        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Quản lý địa điểm</DialogTitle>
+                        </DialogHeader>
+                        <FarmerFarmManager />
+                      </DialogContent>
+                    </Dialog>
                   </div>
 
                   <div className="space-y-2">

@@ -601,7 +601,7 @@ export function FarmerFarmManager() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Danh sách địa điểm</CardTitle>
+            <CardTitle>Danh sách  </CardTitle>
             <CardDescription>Theo dõi toàn bộ địa điểm canh tác đang gắn với tài khoản của bạn</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -712,7 +712,7 @@ export function FarmerFarmManager() {
                 <PlusCircleIcon className="h-4 w-4" />
               </div>
               <h4 className="text-sm font-semibold">
-                Thêm địa điểm mới
+                Thêm mới
               </h4>
             </div>
             <CollapsibleTrigger asChild>
