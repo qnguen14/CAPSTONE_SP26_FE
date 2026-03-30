@@ -21,7 +21,7 @@ import { farmerService } from "@/libs/api/services/farmer.service";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { handleAuthError } from "@/libs/utils/error-handler";
-import { useAuth } from "@/stores/auth.store";
+import { useAuth } from "@/libs/stores/auth.store";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,20 +56,20 @@ export default function LoginPage() {
       });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       await authService.verifyRegister({
         email: farmerEmail,
         otp: otp
       });
-      
+
       toast({
         title: "Thành công",
         description: "Xác thực tài khoản thành công! Vui lòng đăng nhập lại.",
         variant: "default",
       });
-      
+
       setIsVerifying(false);
       setOtp("");
       setIsLoading(false);
@@ -85,7 +85,7 @@ export default function LoginPage() {
 
   const handleResendOTP = async () => {
     if (countdown > 0) return;
-    
+
     try {
       await authService.resendOTP(farmerEmail);
       toast({
@@ -138,13 +138,13 @@ export default function LoginPage() {
           localStorage.removeItem("user_email");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
-          
+
           if (!isAutoLogin) {
             toast({
               title: "Tài khoản chưa xác thực",
               description: "Hệ thống đã tự động gửi mã OTP mới đến email của bạn. Vui lòng xác thực.",
             });
-            
+
             // Automatically resend OTP
             try {
               await authService.resendOTP(farmerEmail);
@@ -183,7 +183,7 @@ export default function LoginPage() {
 
           return;
         }
-        
+
         // Create user object for auth context
         const user = {
           id: userData.id || '',
@@ -200,28 +200,28 @@ export default function LoginPage() {
           description: response.message || "Đăng nhập thành công. Đang kiểm tra thông tin...",
           variant: "default",
         });
-        
+
         try {
           if (role === "farmer") {
             const profileRes = await farmerService.getProfile();
             const profile = profileRes.data;
             if (!profile?.contactName && !profile?.address) {
-               router.push("/farmer/setup-profile");
-               return;
+              router.push("/farmer/setup-profile");
+              return;
             }
           }
         } catch (profileError: any) {
-             const statusCode = profileError?.response?.status;
-             const backendMessage = profileError?.response?.data?.message;
-             const isProfileMissing =
-               statusCode === 500 &&
-               typeof backendMessage === "string" &&
-               backendMessage.toLowerCase().includes("farmer profile not found");
-             
-             if (isProfileMissing || statusCode === 404) {
-               router.push("/farmer/setup-profile");
-               return;
-             }
+          const statusCode = profileError?.response?.status;
+          const backendMessage = profileError?.response?.data?.message;
+          const isProfileMissing =
+            statusCode === 500 &&
+            typeof backendMessage === "string" &&
+            backendMessage.toLowerCase().includes("farmer profile not found");
+
+          if (isProfileMissing || statusCode === 404) {
+            router.push("/farmer/setup-profile");
+            return;
+          }
         }
 
         // Redirect by role after a short delay
@@ -240,10 +240,10 @@ export default function LoginPage() {
     } catch (error: any) {
       // Handle network errors or unexpected errors
       console.error("Login error:", error);
-      
-      const isNotVerified = error?.response?.status === 403 && 
-                           (error?.response?.data?.message?.toLowerCase().includes("not verified") || 
-                            error?.response?.data?.error?.toLowerCase().includes("not verified"));
+
+      const isNotVerified = error?.response?.status === 403 &&
+        (error?.response?.data?.message?.toLowerCase().includes("not verified") ||
+          error?.response?.data?.error?.toLowerCase().includes("not verified"));
 
       if (isNotVerified) {
         if (!isAutoLogin) {
@@ -252,7 +252,7 @@ export default function LoginPage() {
             description: "Hệ thống đã tự động gửi mã OTP mới đến email của bạn. Vui lòng xác thực.",
             variant: "destructive",
           });
-          
+
           // Automatically resend OTP
           try {
             await authService.resendOTP(farmerEmail);
@@ -325,7 +325,7 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-2 pt-2">
                   <Button
                     type="submit"
@@ -334,7 +334,7 @@ export default function LoginPage() {
                   >
                     {isLoading ? "Đang xác thực..." : "Xác thực"}
                   </Button>
-                  
+
                   <div className="text-center mt-4">
                     <p className="text-sm text-muted-foreground mb-2">
                       Chưa nhận được mã?
@@ -360,80 +360,80 @@ export default function LoginPage() {
                 </div>
               </form>
             ) : (
-                <form onSubmit={handleFarmerLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="farmer-email">Email</Label>
+              <form onSubmit={handleFarmerLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="farmer-email">Email</Label>
+                  <Input
+                    id="farmer-email"
+                    name="email"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={farmerEmail}
+                    onChange={(e) => setFarmerEmail(e.target.value)}
+                    className="border-agro-green/30 focus:border-agro-green"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="farmer-password">Mật khẩu</Label>
+                  <div className="relative">
                     <Input
-                      id="farmer-email"
-                      name="email"
-                      type="email"
-                      placeholder="email@example.com"
-                      value={farmerEmail}
-                      onChange={(e) => setFarmerEmail(e.target.value)}
-                      className="border-agro-green/30 focus:border-agro-green"
+                      id="farmer-password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Nhập mật khẩu"
+                      value={farmerPassword}
+                      onChange={(e) => setFarmerPassword(e.target.value)}
+                      className="border-agro-green/30 focus:border-agro-green pr-10"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="farmer-password">Mật khẩu</Label>
-                    <div className="relative">
-                      <Input
-                        id="farmer-password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Nhập mật khẩu"
-                        value={farmerPassword}
-                        onChange={(e) => setFarmerPassword(e.target.value)}
-                        className="border-agro-green/30 focus:border-agro-green pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="remember"
-                        className="rounded border-agro-green/30"
-                      />
-                      <span>Ghi nhớ đăng nhập</span>
-                    </label>
-                    <Link
-                      href="/auth/forgot-password"
-                      className="text-agro-green hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      Quên mật khẩu?
-                    </Link>
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-agro-green hover:bg-agro-green-dark text-white"
-                    disabled={isLoading}
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="remember"
+                      className="rounded border-agro-green/30"
+                    />
+                    <span>Ghi nhớ đăng nhập</span>
+                  </label>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-agro-green hover:underline"
                   >
-                    {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
-                  </Button>
-                  
-                  <GoogleLoginButton roleId={3} showDivider />
+                    Quên mật khẩu?
+                  </Link>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-agro-green hover:bg-agro-green-dark text-white"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+                </Button>
 
-                  <p className="text-center text-sm text-muted-foreground">
-                    Chưa có tài khoản?{" "}
-                    <Link
-                      href="/auth/register?type=farmer"
-                      className="text-agro-green hover:underline font-medium"
-                    >
-                      Đăng ký ngay
-                    </Link>
-                  </p>
-                </form>
+                <GoogleLoginButton roleId={3} showDivider />
+
+                <p className="text-center text-sm text-muted-foreground">
+                  Chưa có tài khoản?{" "}
+                  <Link
+                    href="/auth/register?type=farmer"
+                    className="text-agro-green hover:underline font-medium"
+                  >
+                    Đăng ký ngay
+                  </Link>
+                </p>
+              </form>
             )}
           </CardContent>
         </Card>

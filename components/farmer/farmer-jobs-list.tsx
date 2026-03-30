@@ -38,7 +38,7 @@ import { farmerService } from "@/libs/api/services/farmer.service"
 import { jobCategoryService } from "@/libs/api/services/job-category.service"
 import { skillService } from "@/libs/api/services/skill.service"
 import { useProvinces } from "@/hooks/use-provinces"
-import type { Application, Job, JobCategory, PaginatedResponse, Skill } from "@/libs/api/types"
+import type { Application, Job, JobCategory, PaginatedResponse, Skill } from "@/libs/types"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,22 +145,22 @@ export function FarmerJobsList() {
       try {
         setSkillsLoading(true)
         let skillsResponse;
-        
+
         const selectedCat = categories.find(c => c.name === filterCategory || c.id === filterCategory);
-        
+
         if (selectedCat && selectedCat.id && filterCategory !== "all-categories") {
           skillsResponse = await skillService.getSkillsByCategory(selectedCat.id, { page: skillPage, limit: SKILLS_PER_PAGE })
-          
+
           const skillsPayload = skillsResponse.data as Skill[] | { data?: Skill[], items?: Skill[], metadata?: any, pagination?: any }
-          const totalPages = (skillsResponse.data && !Array.isArray(skillsResponse.data) && (skillsResponse.data as any).totalPages) || 
-                             (skillsResponse as any).metadata?.totalPages || 
-                             (skillsResponse as any).pagination?.totalPages || 
-                             (skillsResponse as any).totalPages || 
-                             (skillsResponse as any).meta?.totalPages ||
-                             1;
-                             
+          const totalPages = (skillsResponse.data && !Array.isArray(skillsResponse.data) && (skillsResponse.data as any).totalPages) ||
+            (skillsResponse as any).metadata?.totalPages ||
+            (skillsResponse as any).pagination?.totalPages ||
+            (skillsResponse as any).totalPages ||
+            (skillsResponse as any).meta?.totalPages ||
+            1;
+
           setSkillTotalPages(totalPages)
-          
+
           if (Array.isArray(skillsPayload)) {
             setSkills(skillsPayload)
           } else if (Array.isArray(skillsPayload?.items)) {
@@ -174,7 +174,7 @@ export function FarmerJobsList() {
           // Frontend pagination if no category selected
           skillsResponse = await skillService.getSkills()
           const skillsPayload = skillsResponse.data as Skill[] | { data?: Skill[], items?: Skill[] }
-          
+
           let allItems: Skill[] = [];
           if (Array.isArray(skillsPayload)) {
             allItems = skillsPayload
@@ -183,7 +183,7 @@ export function FarmerJobsList() {
           } else if (Array.isArray(skillsPayload?.data)) {
             allItems = skillsPayload.data
           }
-          
+
           setSkillTotalPages(Math.ceil(allItems.length / SKILLS_PER_PAGE) || 1)
           const startIdx = (skillPage - 1) * SKILLS_PER_PAGE
           setSkills(allItems.slice(startIdx, startIdx + SKILLS_PER_PAGE))
@@ -413,132 +413,132 @@ export function FarmerJobsList() {
         </div>
       </div>
 
-        <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Bộ lọc tìm kiếm</DialogTitle>
-              <DialogDescription>
-                Tùy chỉnh các tiêu chí để lọc danh sách công việc
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Danh mục công việc</Label>
-                <Select 
-                  value={filterCategory} 
-                  onValueChange={(val) => {
-                    setFilterCategory(val)
-                    setFilterSkills([]) // Reset skills when category changes
-                    setSkillPage(1) // Reset skill page when category changes
-                  }} 
-                  disabled={categoriesLoading}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={categoriesLoading ? "Đang tải..." : "Chọn danh mục"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-categories">Tất cả danh mục</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name || category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Bộ lọc tìm kiếm</DialogTitle>
+            <DialogDescription>
+              Tùy chỉnh các tiêu chí để lọc danh sách công việc
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Danh mục công việc</Label>
+              <Select
+                value={filterCategory}
+                onValueChange={(val) => {
+                  setFilterCategory(val)
+                  setFilterSkills([]) // Reset skills when category changes
+                  setSkillPage(1) // Reset skill page when category changes
+                }}
+                disabled={categoriesLoading}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={categoriesLoading ? "Đang tải..." : "Chọn danh mục"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-categories">Tất cả danh mục</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name || category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <Label>Kỹ năng</Label>
-                  <div className="flex items-center gap-2">
-                    {filterSkills.length > 0 && (
-                      <Button variant="ghost" className="h-auto p-0 text-xs text-muted-foreground mr-2" onClick={() => setFilterSkills([])}>
-                        Xóa chọn ({filterSkills.length})
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label>Kỹ năng</Label>
+                <div className="flex items-center gap-2">
+                  {filterSkills.length > 0 && (
+                    <Button variant="ghost" className="h-auto p-0 text-xs text-muted-foreground mr-2" onClick={() => setFilterSkills([])}>
+                      Xóa chọn ({filterSkills.length})
+                    </Button>
+                  )}
+                  {skillTotalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => setSkillPage((p) => Math.max(1, p - 1))}
+                        disabled={skillPage === 1 || skillsLoading}
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                        <span className="sr-only">Trang trước</span>
                       </Button>
-                    )}
-                    {skillTotalPages > 1 && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => setSkillPage((p) => Math.max(1, p - 1))}
-                          disabled={skillPage === 1 || skillsLoading}
-                        >
-                          <ChevronLeft className="h-3 w-3" />
-                          <span className="sr-only">Trang trước</span>
-                        </Button>
-                        <span className="text-xs font-medium min-w-[3ch] text-center">
-                          {skillPage}/{skillTotalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => setSkillPage((p) => Math.min(skillTotalPages, p + 1))}
-                          disabled={skillPage === skillTotalPages || skillsLoading}
-                        >
-                          <ChevronRight className="h-3 w-3" />
-                          <span className="sr-only">Trang sau</span>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                      <span className="text-xs font-medium min-w-[3ch] text-center">
+                        {skillPage}/{skillTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => setSkillPage((p) => Math.min(skillTotalPages, p + 1))}
+                        disabled={skillPage === skillTotalPages || skillsLoading}
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                        <span className="sr-only">Trang sau</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                
-                {skillsLoading ? (
-                  <div className="flex items-center justify-center py-8 min-h-[140px]">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : skills.length === 0 ? (
-                  <div className="text-sm text-muted-foreground py-4 border rounded-md px-3 bg-slate-50 text-center min-h-[140px] flex items-center justify-center">Không có kỹ năng nào.</div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3 min-h-[140px] content-start p-1">
-                    {skills.map((skill) => (
-                      <div key={skill.id} className="flex items-start space-x-2 border rounded-md p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                        <Checkbox 
-                          id={`filter-skill-${skill.id}`} 
-                          checked={filterSkills.includes(skill.name || skill.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFilterSkills([...filterSkills, skill.name || skill.id])
-                            } else {
-                              setFilterSkills(filterSkills.filter(s => s !== (skill.name || skill.id)))
-                            }
-                          }}
-                          className="mt-0.5"
-                        />
-                        <Label htmlFor={`filter-skill-${skill.id}`} className="text-xs font-medium cursor-pointer flex-1 line-clamp-2 leading-relaxed h-full grid items-center">
-                          {skill.name}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Khu vực</Label>
-                <Select value={filterAddress} onValueChange={setFilterAddress} disabled={provincesLoading}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={provincesLoading ? "Đang tải..." : "Chọn khu vực"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-provinces">Tất cả khu vực</SelectItem>
-                    {provinces.map((province) => (
-                      <SelectItem key={province.code} value={province.name}>
-                        {province.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {skillsLoading ? (
+                <div className="flex items-center justify-center py-8 min-h-[140px]">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : skills.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 border rounded-md px-3 bg-slate-50 text-center min-h-[140px] flex items-center justify-center">Không có kỹ năng nào.</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 min-h-[140px] content-start p-1">
+                  {skills.map((skill) => (
+                    <div key={skill.id} className="flex items-start space-x-2 border rounded-md p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                      <Checkbox
+                        id={`filter-skill-${skill.id}`}
+                        checked={filterSkills.includes(skill.name || skill.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFilterSkills([...filterSkills, skill.name || skill.id])
+                          } else {
+                            setFilterSkills(filterSkills.filter(s => s !== (skill.name || skill.id)))
+                          }
+                        }}
+                        className="mt-0.5"
+                      />
+                      <Label htmlFor={`filter-skill-${skill.id}`} className="text-xs font-medium cursor-pointer flex-1 line-clamp-2 leading-relaxed h-full grid items-center">
+                        {skill.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex justify-end mt-4">
-              <Button onClick={() => setIsFilterDialogOpen(false)}>Hoàn tất</Button>
+
+            <div className="space-y-2">
+              <Label>Khu vực</Label>
+              <Select value={filterAddress} onValueChange={setFilterAddress} disabled={provincesLoading}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={provincesLoading ? "Đang tải..." : "Chọn khu vực"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-provinces">Tất cả khu vực</SelectItem>
+                  {provinces.map((province) => (
+                    <SelectItem key={province.code} value={province.name}>
+                      {province.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setIsFilterDialogOpen(false)}>Hoàn tất</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Jobs List */}
       <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "flex flex-col gap-4"}>

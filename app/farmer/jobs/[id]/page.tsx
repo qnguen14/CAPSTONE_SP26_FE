@@ -19,8 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { farmerService } from "@/libs/api/services/farmer.service"
-import { ApplicationStatusId } from "@/libs/api/types"
-import type { ApplicationDTO, Job, PaginatedResponse, RespondApplicationRequest } from "@/libs/api/types"
+import { ApplicationStatusId } from "@/libs/types"
+import type { ApplicationDTO, Job, PaginatedResponse, RespondApplicationRequest } from "@/libs/types"
 
 const APP_STATUS = {
   pending: ApplicationStatusId.Pending,

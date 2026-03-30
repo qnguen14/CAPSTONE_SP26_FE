@@ -1,6 +1,6 @@
 import { verify } from 'crypto';
 import { axiosInstance } from '../axios-instance';
-import { API_ENDPOINTS } from '../config';
+import { API_ENDPOINTS } from '../endpoints/config';
 import type {
   ApiResponse,
   LoginRequest,
@@ -10,7 +10,7 @@ import type {
   ForgetPasswordRequest,
   ResetPasswordRequest,
   VerifyEmail,
-} from '../types';
+} from '@/libs/types';
 
 export const authService = {
   /**
@@ -21,13 +21,13 @@ export const authService = {
       email: credentials.email,
       password: credentials.password,
     });
-    
+
     // Store token in localStorage
     if (response.data.data.token) {
       localStorage.setItem('access_token', response.data.data.token);
       localStorage.setItem('user_email', response.data.data.email);
     }
-    
+
     return response.data;
   },
 
@@ -36,7 +36,7 @@ export const authService = {
    */
   register: async (data: RegisterRequest): Promise<ApiResponse<LoginResponse>> => {
     const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REGISTER, data);
-    
+
     // Store token in localStorage
     if (response.data.data?.token) {
       localStorage.setItem('access_token', response.data.data.token);
@@ -46,12 +46,12 @@ export const authService = {
     return response.data;
   },
 
-  verifyRegister: async (data: VerifyEmail): Promise<ApiResponse<void>> => {        
+  verifyRegister: async (data: VerifyEmail): Promise<ApiResponse<void>> => {
     const response = await axiosInstance.post(API_ENDPOINTS.AUTH.VERIFY_REGISTER, data);
     return response.data;
   },
 
-  resendOTP: async (email: string): Promise<ApiResponse<void>> => { 
+  resendOTP: async (email: string): Promise<ApiResponse<void>> => {
     const response = await axiosInstance.post(API_ENDPOINTS.AUTH.RESEND_OTP, { email });
     return response.data;
   },
@@ -60,17 +60,17 @@ export const authService = {
    * Google login
    */
   googleLogin: async (googleToken: string, roleId: number): Promise<ApiResponse<LoginResponse>> => {
-    const response = await axiosInstance.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, { 
+    const response = await axiosInstance.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, {
       googleToken,
-      roleId 
+      roleId
     });
-    
+
     // Store token in localStorage
     if (response.data.data.token) {
       localStorage.setItem('access_token', response.data.data.token);
       localStorage.setItem('user_email', response.data.data.email);
     }
-    
+
     return response.data;
   },
 

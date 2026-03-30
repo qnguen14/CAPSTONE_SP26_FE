@@ -10,8 +10,8 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Upload, Save, Loader2, RotateCcw, CalendarIcon } from "lucide-react"
-import { handleApiError } from "@/lib/utils/error-handler"
-import { FarmerProfile, UpdateFarmerRequest } from "@/libs/api/types"
+import { handleApiError } from "@/libs/utils/error-handler"
+import { FarmerProfile, UpdateFarmerRequest } from "@/libs/types"
 import { farmerService } from "@/libs/api/services/farmer.service"
 import { cloudinaryService } from "@/libs/api/services/cloudinary.service"
 import { useToast } from "@/hooks/use-toast"
@@ -19,17 +19,17 @@ import { AddressForm } from "@/components/address-form"
 import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/libs/utils";
+import { cn } from "@/libs/utils/utils";
 import { vi } from "date-fns/locale"
 
-export default function SettingsPage() {  
+export default function SettingsPage() {
   const [profile, setProfile] = useState<FarmerProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState("")
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  
+
   const [addressObj, setAddressObj] = useState({
     province: "",
     ward: "",
@@ -70,7 +70,7 @@ export default function SettingsPage() {
             dateOfBirth: response.data.dateOfBirth || "",
             avatarUrl: initialAvatar,
           })
-          
+
           if (response.data.address) {
             const parts = response.data.address.split(",").map(p => p.trim())
             if (parts.length >= 3) {
@@ -127,7 +127,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      
+
       const fullAddressParts = [
         addressObj.detailedAddress,
         addressObj.ward,
@@ -325,7 +325,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              
+
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -365,8 +365,8 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100 space-y-2">
-                    <AddressForm 
-                      value={addressObj} 
+                    <AddressForm
+                      value={addressObj}
                       onChange={setAddressObj}
                       required={false}
                     />

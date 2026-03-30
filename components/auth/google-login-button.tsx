@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { handleAuthError } from '@/libs/utils/error-handler';
-import { useAuth } from '@/stores/auth.store';
+import { useAuth } from '@/libs/stores/auth.store';
 
 interface GoogleLoginButtonProps {
   roleId: number;
@@ -68,12 +68,12 @@ export function GoogleLoginButton({ roleId, showDivider = false, onSuccess, onEr
             description: "Vui lòng xác thực email của bạn. Nếu cần thiết, hãy đăng ký và nhận lại mã OTP.",
             variant: "destructive",
           });
-          
+
           localStorage.removeItem("access_token");
           localStorage.removeItem("user_email");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
-          
+
           return;
         }
 
@@ -101,7 +101,7 @@ export function GoogleLoginButton({ roleId, showDivider = false, onSuccess, onEr
           onError?.(new Error('Worker role is mobile-only'));
           return;
         }
-        
+
         // Create user object for auth context
         const user = {
           // @ts-ignore
@@ -119,7 +119,7 @@ export function GoogleLoginButton({ roleId, showDivider = false, onSuccess, onEr
           title: "Thành công",
           description: response.message || "Đăng nhập thành công",
         });
-        
+
         onSuccess?.();
 
         try {
@@ -127,24 +127,24 @@ export function GoogleLoginButton({ roleId, showDivider = false, onSuccess, onEr
             const profileRes = await farmerService.getProfile();
             const profile = profileRes.data;
             if (!profile?.contactName && !profile?.address) {
-               router.push('/farmer/setup-profile');
-               return;
+              router.push('/farmer/setup-profile');
+              return;
             }
           }
         } catch (profileError: any) {
-           const statusCode = profileError?.response?.status;
-           const backendMessage = profileError?.response?.data?.message;
-           const isProfileMissing =
-             statusCode === 500 &&
-             typeof backendMessage === "string" &&
-             backendMessage.toLowerCase().includes("farmer profile not found");
-           
-           if (isProfileMissing || statusCode === 404) {
-             router.push("/farmer/setup-profile");
-             return;
-           }
+          const statusCode = profileError?.response?.status;
+          const backendMessage = profileError?.response?.data?.message;
+          const isProfileMissing =
+            statusCode === 500 &&
+            typeof backendMessage === "string" &&
+            backendMessage.toLowerCase().includes("farmer profile not found");
+
+          if (isProfileMissing || statusCode === 404) {
+            router.push("/farmer/setup-profile");
+            return;
+          }
         }
-        
+
         router.push(role === 'admin' ? '/admin' : '/farmer/dashboard');
       } else {
         toast({

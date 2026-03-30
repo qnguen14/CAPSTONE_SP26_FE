@@ -44,7 +44,7 @@ import type {
   Job,
   PaginatedResponse,
   RespondApplicationRequest,
-} from "@/libs/api/types"
+} from "@/libs/types"
 
 const APP_STATUS = {
   pending: 1,

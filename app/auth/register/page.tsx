@@ -18,9 +18,9 @@ import {
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { authService } from "@/libs/api/services/auth.service";
 import { useToast } from "@/hooks/use-toast";
-import { GoogleLoginButton } from "@/components/auth/google-login-button";      
+import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { handleRegistrationError } from "@/libs/utils/error-handler";
-import { useAuth } from "@/stores/auth.store";
+import { useAuth } from "@/libs/stores/auth.store";
 
 function RegisterContent() {
   const router = useRouter();
@@ -28,7 +28,7 @@ function RegisterContent() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);        
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;
     phoneNumber?: string;
@@ -58,8 +58,8 @@ function RegisterContent() {
 
   const validateEmail = (value: string) => {
     const normalizedEmail = value.trim().toLowerCase();
-    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;      
-    const [localPart = "", domainPart = ""] = normalizedEmail.split("@");       
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const [localPart = "", domainPart = ""] = normalizedEmail.split("@");
 
     if (!normalizedEmail) return "Email là bắt buộc";
 
@@ -92,7 +92,7 @@ function RegisterContent() {
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
     if (!passwordRegex.test(value)) {
-      return "Mật khẩu phải có ít nhất 1 chữ hoa, 1 số và 1 ký tự đặc biệt";    
+      return "Mật khẩu phải có ít nhất 1 chữ hoa, 1 số và 1 ký tự đặc biệt";
     }
 
     return undefined;
@@ -100,7 +100,7 @@ function RegisterContent() {
 
   const validateConfirmPassword = (password: string, confirmPassword: string) => {
     if (!confirmPassword) return "Vui lòng xác nhận mật khẩu";
-    if (password !== confirmPassword) return "Mật khẩu xác nhận không khớp";    
+    if (password !== confirmPassword) return "Mật khẩu xác nhận không khớp";
     return undefined;
   };
 
@@ -175,20 +175,20 @@ function RegisterContent() {
       });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       await authService.verifyRegister({
         email: registeredEmail,
         otp: otp
       });
-      
+
       toast({
         title: "Thành công",
         description: "Xác thực tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.",
         variant: "default",
       });
-      
+
       router.push("/auth/login");
     } catch (error: any) {
       toast({
@@ -203,7 +203,7 @@ function RegisterContent() {
 
   const handleResendOTP = async () => {
     if (countdown > 0) return;
-    
+
     try {
       await authService.resendOTP(registeredEmail);
       toast({
@@ -246,10 +246,10 @@ function RegisterContent() {
               {isVerifying ? "Xác thực tài khoản" : "Đăng ký"}
             </CardTitle>
             <CardDescription>
-              {isVerifying 
-                ? "Vui lòng nhập mã OTP đã được gửi đến email của bạn" 
+              {isVerifying
+                ? "Vui lòng nhập mã OTP đã được gửi đến email của bạn"
                 : "Đăng ký dành cho Nông dân"}
-            </CardDescription>        
+            </CardDescription>
           </CardHeader>
 
           <CardContent>
@@ -269,7 +269,7 @@ function RegisterContent() {
                     required
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-2 pt-2">
                   <Button
                     type="submit"
@@ -278,7 +278,7 @@ function RegisterContent() {
                   >
                     {isLoading ? "Đang xác thực..." : "Xác thực"}
                   </Button>
-                  
+
                   <div className="text-center mt-4">
                     <p className="text-sm text-muted-foreground mb-2">
                       Chưa nhận được mã?
@@ -322,13 +322,12 @@ function RegisterContent() {
                         email: validateEmail(formData.email),
                       }))
                     }
-                    className={`border-agro-green/30 focus:border-agro-green ${   
-                      fieldErrors.email ? "border-red-500 focus:border-red-500" : ""
-                    }`}
+                    className={`border-agro-green/30 focus:border-agro-green ${fieldErrors.email ? "border-red-500 focus:border-red-500" : ""
+                      }`}
                     required
                   />
                   {fieldErrors.email && (
-                    <p className="text-sm text-red-600">{fieldErrors.email}</p>   
+                    <p className="text-sm text-red-600">{fieldErrors.email}</p>
                   )}
                 </div>
 
@@ -354,14 +353,13 @@ function RegisterContent() {
                     onBlur={() =>
                       setFieldErrors((prev) => ({
                         ...prev,
-                        phoneNumber: validatePhoneNumber(formData.phoneNumber),   
+                        phoneNumber: validatePhoneNumber(formData.phoneNumber),
                       }))
                     }
-                    className={`border-agro-green/30 focus:border-agro-green ${   
-                      fieldErrors.phoneNumber
+                    className={`border-agro-green/30 focus:border-agro-green ${fieldErrors.phoneNumber
                         ? "border-red-500 focus:border-red-500"
                         : ""
-                    }`}
+                      }`}
                     required
                   />
                   {fieldErrors.phoneNumber && (
@@ -399,9 +397,8 @@ function RegisterContent() {
                           password: validatePassword(formData.password),
                         }))
                       }
-                      className={`border-agro-green/30 focus:border-agro-green pr-10 ${
-                        fieldErrors.password ? "border-red-500 focus:border-red-500" : ""
-                      }`}
+                      className={`border-agro-green/30 focus:border-agro-green pr-10 ${fieldErrors.password ? "border-red-500 focus:border-red-500" : ""
+                        }`}
                       required
                     />
                     <button
@@ -422,7 +419,7 @@ function RegisterContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>      
+                  <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
@@ -453,11 +450,10 @@ function RegisterContent() {
                           ),
                         }))
                       }
-                      className={`border-agro-green/30 focus:border-agro-green pr-10 ${
-                        fieldErrors.confirmPassword
+                      className={`border-agro-green/30 focus:border-agro-green pr-10 ${fieldErrors.confirmPassword
                           ? "border-red-500 focus:border-red-500"
                           : ""
-                      }`}
+                        }`}
                       required
                     />
                     <button
@@ -516,7 +512,7 @@ function RegisterContent() {
                   Đã có tài khoản?{" "}
                   <Link
                     href="/auth/login"
-                    className="text-agro-green hover:underline font-medium"       
+                    className="text-agro-green hover:underline font-medium"
                   >
                     Đăng nhập
                   </Link>

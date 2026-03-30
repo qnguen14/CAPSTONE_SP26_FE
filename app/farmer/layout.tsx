@@ -28,8 +28,9 @@ import {
   Home,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FarmerProfile, farmerService, authService } from "@/libs/api"
-import { useAuth } from "@/stores/auth.store";
+import { farmerService, authService } from "@/libs/api/services"
+import type { FarmerProfile } from "@/libs/types"
+import { useAuth } from "@/libs/stores/auth.store";
 import { AnimatedBubbles } from "@/components/farmer/animated-bubbles";
 
 export default function FarmerLayout({
@@ -47,7 +48,7 @@ export default function FarmerLayout({
     { icon: LayoutDashboard, label: "Tổng quan", href: "/farmer/dashboard" },
     { icon: Leaf, label: "Bài đăng", href: "/farmer/jobs" },
     { icon: PlusCircle, label: "Đăng tin", href: "/farmer/create-job" },
-    { icon: MessageCircle, label: "Tin nhắn", href: "/farmer/messages"},
+    { icon: MessageCircle, label: "Tin nhắn", href: "/farmer/messages" },
     { icon: Wallet, label: "Thanh toán", href: "/farmer/payments" },
   ];
   const [profile, setProfile] = useState<FarmerProfile | null>(null)
@@ -161,11 +162,10 @@ export default function FarmerLayout({
                   <Link key={item.href} href={item.href}>
                     <Button
                       variant={isActive ? "default" : "ghost"}
-                      className={`gap-2 ${
-                        isActive
-                          ? "bg-agro-green text-white hover:bg-agro-green-dark"
-                          : "text-foreground hover:bg-gray-200"
-                      }`}
+                      className={`gap-2 ${isActive
+                        ? "bg-agro-green text-white hover:bg-agro-green-dark"
+                        : "text-foreground hover:bg-gray-200"
+                        }`}
                     >
                       <item.icon className="h-4 w-4" />
                       {item.label}
@@ -245,9 +245,8 @@ export default function FarmerLayout({
                           <Link key={item.href} href={item.href}>
                             <Button
                               variant={isActive ? "default" : "ghost"}
-                              className={`w-full justify-start gap-3 ${
-                                isActive ? "bg-agro-green text-white" : ""
-                              }`}
+                              className={`w-full justify-start gap-3 ${isActive ? "bg-agro-green text-white" : ""
+                                }`}
                             >
                               <item.icon className="h-5 w-5" />
                               {item.label}

@@ -1,6 +1,6 @@
 import axiosInstance from '../axios-instance';
-import { API_ENDPOINTS } from '../config';
-import { ApplicationStatusId } from '../types';
+import { API_ENDPOINTS } from '../endpoints/config';
+import { ApplicationStatusId } from '@/libs/types';
 import type {
   ApiResponse,
   PaginatedResponse,
@@ -12,7 +12,7 @@ import type {
   FarmerProfile,
   RespondApplicationRequest,
   UpdateFarmerRequest,
-} from '../types';
+} from '@/libs/types';
 
 export const farmerService = {
 

@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload, Loader2, CalendarIcon, MapPin, User, FileText } from "lucide-react";
-import { handleApiError } from "@/lib/utils/error-handler";
-import { UpdateFarmerRequest } from "@/libs/api/types";
+import { handleApiError } from "@/libs/utils/error-handler";
+import { UpdateFarmerRequest } from "@/libs/types";
 import { farmerService } from "@/libs/api/services/farmer.service";
 import { cloudinaryService } from "@/libs/api/services/cloudinary.service";
 import { useToast } from "@/hooks/use-toast";
@@ -24,17 +24,17 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/libs/utils";
+import { cn } from "@/libs/utils/utils";
 
 export default function SetupProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState("");
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [addressObj, setAddressObj] = useState({
     province: "",
     ward: "",
@@ -95,7 +95,7 @@ export default function SetupProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Construct the full address
     const fullAddressParts = [
       addressObj.detailedAddress,
@@ -103,33 +103,33 @@ export default function SetupProfilePage() {
       addressObj.province
     ].filter(Boolean);
     const fullAddress = fullAddressParts.join(", ");
-    
+
     if (!formData.contactName || !fullAddress || fullAddressParts.length < 2) {
-       toast({
-         title: "Thiếu thông tin",
-         description: "Vui lòng điền đầy đủ họ tên và địa chỉ (Tỉnh/Thành, Phường/Xã và Số nhà).",
-         variant: "destructive",
-       });
-       return;
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng điền đầy đủ họ tên và địa chỉ (Tỉnh/Thành, Phường/Xã và Số nhà).",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
       setSaving(true);
-      
+
       let finalData = { ...formData, address: fullAddress };
       if (finalData.dateOfBirth) {
-         // Optionally format if needed for API compliance
+        // Optionally format if needed for API compliance
       } else {
-         delete finalData.dateOfBirth;
+        delete finalData.dateOfBirth;
       }
 
       await farmerService.updateProfile(finalData);
-      
+
       toast({
         title: "Thành công",
         description: "Hồ sơ của bạn đã được thiết lập.",
       });
-      
+
       router.push("/farmer/dashboard");
     } catch (error: any) {
       console.error("Setup profile error:", error);
@@ -205,7 +205,7 @@ export default function SetupProfilePage() {
                       <FileText className="h-5 w-5 text-agro-green" />
                       Thông tin cơ bản
                     </h3>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="contactName" className="font-medium text-gray-700">
                         Họ và Tên <span className="text-red-500">*</span>
@@ -246,7 +246,7 @@ export default function SetupProfilePage() {
                           <Calendar
                             mode="single"
                             selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
-                            onSelect={(date) => 
+                            onSelect={(date) =>
                               handleInputChange("dateOfBirth", date ? format(date, "yyyy-MM-dd") : "")
                             }
                             disabled={(date) =>
@@ -272,8 +272,8 @@ export default function SetupProfilePage() {
                   Địa chỉ liên hệ <span className="text-red-500 ml-1 text-sm">*</span>
                 </h3>
                 <div className="bg-gray-50/50 rounded-xl p-6 border border-gray-100">
-                  <AddressForm 
-                    value={addressObj} 
+                  <AddressForm
+                    value={addressObj}
                     onChange={setAddressObj}
                     required={true}
                   />
