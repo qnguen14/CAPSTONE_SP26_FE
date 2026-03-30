@@ -13,6 +13,11 @@ export const skillService = {
     return response.data;
   },
 
+  getSkillsByCategory: async (categoryId: string, params?: { page?: number; limit?: number }): Promise<ApiResponse<Skill[]>> => {
+    const response = await axiosInstance.get(API_ENDPOINTS.SKILL.SKILLS_CATEGORY(categoryId), { params });
+    return response.data;
+  },
+
   getSkillDetail: async (id: string): Promise<ApiResponse<Skill>> => {
     const response = await axiosInstance.get(API_ENDPOINTS.SKILL.SKILL_DETAIL(id));
     return response.data;

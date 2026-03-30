@@ -67,6 +67,7 @@ export const API_ENDPOINTS = {
   // Common
   SKILL: {
     SKILLS: '/skills',
+    SKILLS_CATEGORY: (categoryId: string) => `/skills/category/${categoryId}`,
     SKILL_DETAIL: (id: string) => `/skills/${id}`,
     CREATE_SKILL: '/skills',
     UPDATE_SKILL: (id: string) => `/skills/${id}`,

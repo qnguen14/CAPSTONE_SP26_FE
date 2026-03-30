@@ -81,8 +81,8 @@ export interface UpdateFarmRequest {
   latitude: number,
   longitude: number,
   locationName: string,
-  imageUrl: string [], 
-  farmType: number, 
+  imageUrl: string[],
+  farmType: number,
   livestockCount: number,
   areaSize: number,
   isPrimary: boolean,
@@ -95,7 +95,7 @@ export interface GetFarmResponse {
   latitude: number,
   longitude: number,
   locationName: string,
-  imageUrl: string [],
+  imageUrl: string[],
   farmType: number,
   farmTypeName: FarmTypes,
   livestockCount: number,
@@ -194,7 +194,7 @@ export interface CreateJobCategoryRequest {
   isActive: boolean;
 }
 
-export interface UpdateJobCategoryRequest extends Partial<CreateJobCategoryRequest> {}
+export interface UpdateJobCategoryRequest extends Partial<CreateJobCategoryRequest> { }
 
 export interface CreateJobRequest {
   jobTypeId: number;
@@ -203,13 +203,13 @@ export interface CreateJobRequest {
   jobCategoryId: string;
   farmId: string;
   address: string;
-  startDate: string; 
-  endDate: string; 
-  selectedDays?: string[]; 
+  startDate: string;
+  endDate: string;
+  selectedDays?: string[];
   startTime: string;
   endTime: string;
   skillIds: string[];
-  workersNeeded: number;  
+  workersNeeded: number;
   workersAccepted: number;
   wageAmount: number;
   requirements: string[];
@@ -230,18 +230,18 @@ export interface Skill {
   id: string;
   name: string;
   description: string;
-  category: string;
+  categoryId: string;
   isActive: boolean;
 }
 
 export interface CreateSkillRequest {
   name: string;
   description: string;
-  category: string;
+  categoryId: string;
   isActive: boolean;
 }
 
-export interface UpdateSkillRequest extends Partial<CreateSkillRequest> {}
+export interface UpdateSkillRequest extends Partial<CreateSkillRequest> { }
 
 // Application Types
 export interface Application {

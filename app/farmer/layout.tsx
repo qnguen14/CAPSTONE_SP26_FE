@@ -45,7 +45,7 @@ export default function FarmerLayout({
 
   const navItems = [
     { icon: LayoutDashboard, label: "Tổng quan", href: "/farmer/dashboard" },
-    { icon: Leaf, label: "Công việc", href: "/farmer/jobs" },
+    { icon: Leaf, label: "Bài đăng", href: "/farmer/jobs" },
     { icon: PlusCircle, label: "Đăng tin", href: "/farmer/create-job" },
     { icon: MessageCircle, label: "Tin nhắn", href: "/farmer/messages"},
     { icon: Wallet, label: "Thanh toán", href: "/farmer/payments" },

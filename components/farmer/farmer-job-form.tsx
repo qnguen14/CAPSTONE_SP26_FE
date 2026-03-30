@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Check, CheckCheck, ChevronsUpDown, MapPin,  Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon } from "lucide-react"
+import { ArrowLeft, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { eachDayOfInterval, format, isSameDay, startOfDay } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -190,8 +190,18 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([])
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([])
   const [isLoadingSkills, setIsLoadingSkills] = useState(true)
+  const [skillPage, setSkillPage] = useState(1)
+  const [totalSkillPages, setTotalSkillPages] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingExistingJob, setIsLoadingExistingJob] = useState(false)
+
+  const [isAddSkillDialogOpen, setIsAddSkillDialogOpen] = useState(false)
+  const [newSkillName, setNewSkillName] = useState("")
+  const [newSkillDesc, setNewSkillDesc] = useState("")
+  const [isCreatingSkill, setIsCreatingSkill] = useState(false)
+  const [skillListVersion, setSkillListVersion] = useState(0)
+  const [newSkillCategoryId, setNewSkillCategoryId] = useState("")
+  const [isAddSkillCategoryPopoverOpen, setIsAddSkillCategoryPopoverOpen] = useState(false)
 
   const [benefits, setBenefits] = useState<string[]>(["Bao ăn"])
   const [newBenefit, setNewBenefit] = useState("")
@@ -314,6 +324,37 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     )
   }
 
+  const handleCreateSkill = async () => {
+    if (!newSkillName.trim() || !newSkillCategoryId) return
+
+    try {
+      setIsCreatingSkill(true)
+      const response = await skillService.createSkill({
+        name: newSkillName.trim(),
+        description: newSkillDesc.trim() || newSkillName.trim(),
+        categoryId: newSkillCategoryId,
+        isActive: true,
+      })
+
+      const createdSkill = response.data
+
+      if (createdSkill && createdSkill.id && newSkillCategoryId === selectedJobCategoryId) {
+        setSelectedSkillIds((prev) => [...prev, createdSkill.id])
+      }
+
+      setIsAddSkillDialogOpen(false)
+      setNewSkillName("")
+      setNewSkillDesc("")
+
+      setSkillPage(1)
+      setSkillListVersion((v) => v + 1)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsCreatingSkill(false)
+    }
+  }
+
   const addRequirement = () => {
     const value = newRequirement.trim()
 
@@ -352,35 +393,39 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
   useEffect(() => {
     const loadSkills = async () => {
+      if (!selectedJobCategoryId || selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID) return;
       try {
         setIsLoadingSkills(true)
-        const response = await skillService.getSkills()
-        const payload = response.data as Skill[] | { data?: Skill[] }
+        const response = await skillService.getSkillsByCategory(selectedJobCategoryId, { page: skillPage, limit: 6 })
+        const payload = response.data as any
 
-        const fetchedSkills = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload?.data)
-            ? payload.data
-            : []
+        let fetchedSkills: Skill[] = []
+        let totalPages = 1
+
+        if (payload?.data && Array.isArray(payload.data)) {
+          fetchedSkills = payload.data
+          totalPages = payload.pagination?.totalPages || 1
+        } else if (Array.isArray(payload)) {
+          fetchedSkills = payload
+        }
 
         setAvailableSkills(fetchedSkills)
-        setSelectedSkillIds((currentSelected) => {
-          if (currentSelected.length > 0) {
-            return currentSelected
-          }
-
-          return fetchedSkills.length > 0 ? [fetchedSkills[0].id] : []
-        })
+        setTotalSkillPages(totalPages)
       } catch (error) {
         console.error(error)
         setAvailableSkills([])
+        setTotalSkillPages(1)
       } finally {
         setIsLoadingSkills(false)
       }
     }
 
     void loadSkills()
-  }, [])
+  }, [selectedJobCategoryId, skillPage, skillListVersion])
+
+  useEffect(() => {
+    setSkillPage(1)
+  }, [selectedJobCategoryId])
 
   useEffect(() => {
     const hydrateJobForEdit = async () => {
@@ -1160,8 +1205,8 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-4 duration-300">
                       <Card className="flex flex-col gap-4 rounded-lg border bg-muted/50 p-4">
-                          <p className="text-sm text-foreground">Khoán sẽ được thực hiện trong một khoảng thời gian được đề ra nhất định, tiền công sẽ được thanh toán theo độ hoàn thiện sau ngày kết thúc.</p>
-                          <p className="text-sm text-foreground">Ngày sẽ được thực hiện theo giờ vào những ngày được đăng kí, tiền công sẽ được thanh toán dựa theo mức độ hoàn thiện sau khi kết thúc công việc.</p>
+                        <p className="text-sm text-foreground">Khoán sẽ được thực hiện trong một khoảng thời gian được đề ra nhất định, tiền công sẽ được thanh toán theo độ hoàn thiện sau ngày kết thúc.</p>
+                        <p className="text-sm text-foreground">Ngày sẽ được thực hiện theo giờ vào những ngày được đăng kí, tiền công sẽ được thanh toán dựa theo mức độ hoàn thiện sau khi kết thúc công việc.</p>
                       </Card>
                     </CollapsibleContent>
                   </Collapsible>
@@ -1276,17 +1321,17 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     </div>
                   )}
 
-                    <div className="relative">
-                      <div className="absolute left-3 top-2.5 text-muted-foreground text-xs pr-3">VNĐ</div>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={income}
-                        onChange={(e) => setIncome(e.target.value)}
-                        className="pl-12 text-lg font-medium text-teal-700 dark:text-teal-400"
-                        placeholder="300,000"
-                      />
-                    </div>
+                  <div className="relative">
+                    <div className="absolute left-3 top-2.5 text-muted-foreground text-xs pr-3">VNĐ</div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={income}
+                      onChange={(e) => setIncome(e.target.value)}
+                      className="pl-12 text-lg font-medium text-teal-700 dark:text-teal-400"
+                      placeholder="300,000"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1296,7 +1341,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     <MapPin className="h-5 w-5 text-teal-600" />
                     Địa điểm làm việc<span className="text-destructive">*</span>
                   </CardTitle>
-                    <span className="text-sm font-normal text-muted-foreground">Chọn nơi bạn muốn công việc được thực hiện.</span>
+                  <span className="text-sm font-normal text-muted-foreground">Chọn nơi bạn muốn công việc được thực hiện.</span>
                 </CardHeader>
                 <CardContent className="space-y-7 pt-6">
 
@@ -1382,7 +1427,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                         })()
                       }
                     }}>
-                        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-y-auto">
+                      <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Quản lý địa điểm</DialogTitle>
                         </DialogHeader>
@@ -1394,7 +1439,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                   <div className="space-y-2">
                     <Label>Địa chỉ</Label>
                     <div className="relative z-1000 ">
-                      <Input value={location} onChange={(e) => { setLocation(e.target.value); setLocationLat(undefined); setLocationLng(undefined); }} placeholder="Nhập địa chỉ chi tiết..." />
+                      <Input disabled value={location} onChange={(e) => { setLocation(e.target.value); setLocationLat(undefined); setLocationLng(undefined); }} placeholder="Nhập địa chỉ chi tiết..." />
                       {/* Search suggestions dropdown */}
                       {(isSearchingLocation || locationSuggestions.length > 0) && (
                         <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 shadow-md">
@@ -1428,32 +1473,159 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     <Award className="h-5 w-5 text-blue-500" />
                     Yêu cầu & Quyền lợi
                   </CardTitle>
-                    <span className="text-sm font-normal text-muted-foreground">Thêm những yêu cầu bổ sung và quyền lợi cho công việc.</span>
+                  <span className="text-sm font-normal text-muted-foreground">Thêm những yêu cầu bổ sung và quyền lợi cho công việc.</span>
                 </CardHeader>
                 <CardContent className="space-y-6 flex-1">
                   <div className="space-y-3">
-                    <Label className="text-sm font-semibold text-muted-foreground uppercase">Kỹ năng</Label>
-                    <p className="text-sm text-muted-foreground">Chọn các kỹ năng ứng viên cần có:</p>
-                    <div className="grid grid-cols-1 gap-2">
-                      {availableSkills.map((skill) => (
-                        <div
-                          key={skill.id}
-                          onClick={() => toggleSkill(skill.id)}
-                          className={cn(
-                            "flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-all",
-                            selectedSkillIds.includes(skill.id) ? "border-primary bg-primary/5 shadow-sm" : "border-border"
-                          )}
-                        >
-                          <Checkbox
-                            id={`skill-${skill.id}`}
-                            checked={selectedSkillIds.includes(skill.id)}
-                            onCheckedChange={() => toggleSkill(skill.id)}
-                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                          <span className="text-sm font-medium">{skill.name}</span>
-                        </div>
-                      ))}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-semibold text-muted-foreground uppercase">Kỹ năng</Label>
+                        <p className="text-sm text-muted-foreground">Chọn các kỹ năng ứng viên cần có:</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setIsAddSkillDialogOpen(true)
+                          setNewSkillCategoryId(selectedJobCategoryId)
+                        }}
+                        disabled={selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID}
+                      >
+                        <Plus className="mr-2 h-4 w-4" /> Thêm kỹ năng
+                      </Button>
                     </div>
+
+                    <Dialog open={isAddSkillDialogOpen} onOpenChange={setIsAddSkillDialogOpen}>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Thêm kỹ năng</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Danh mục công việc <span className="text-destructive">*</span></Label>
+                            <Popover open={isAddSkillCategoryPopoverOpen} onOpenChange={setIsAddSkillCategoryPopoverOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className="w-full justify-between font-normal"
+                                >
+                                  {getJobCategoryLabel(newSkillCategoryId) || "Chọn danh mục"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[375px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Tìm kiếm danh mục..." />
+                                  <CommandList>
+                                    <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                                    <CommandGroup>
+                                      {jobCategories.map((category) => (
+                                        <CommandItem
+                                          key={category.id}
+                                          value={category.name}
+                                          onSelect={() => {
+                                            setNewSkillCategoryId(category.id)
+                                            setIsAddSkillCategoryPopoverOpen(false)
+                                          }}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", newSkillCategoryId === category.id ? "opacity-100" : "opacity-0")} />
+                                          {category.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="new-skill-name">
+                              Tên kỹ năng <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="new-skill-name"
+                              value={newSkillName}
+                              onChange={(e) => setNewSkillName(e.target.value)}
+                              placeholder="VD: Sử dụng máy cày..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="new-skill-desc">Mô tả (Không bắt buộc)</Label>
+                            <Input
+                              id="new-skill-desc"
+                              value={newSkillDesc}
+                              onChange={(e) => setNewSkillDesc(e.target.value)}
+                              placeholder="Mô tả ngắn gọn về kỹ năng này..."
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => { setIsAddSkillDialogOpen(false); setNewSkillName(""); setNewSkillDesc(""); }}>
+                            Hủy
+                          </Button>
+                          <Button type="button" onClick={handleCreateSkill} disabled={isCreatingSkill || !newSkillName.trim() || !newSkillCategoryId}>
+                            {isCreatingSkill ? "Đang lưu..." : "Lưu lại"}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    <div className="grid grid-cols-2 gap-2">
+                      {isLoadingSkills ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground"><div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-r-transparent" /> Đang tải kỹ năng...</div>
+                      ) : availableSkills.length > 0 ? (
+                        <>
+                          {availableSkills.map((skill) => (
+                            <div
+                              key={skill.id}
+                              onClick={() => toggleSkill(skill.id)}
+                              className={cn(
+                                "flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-all",
+                                selectedSkillIds.includes(skill.id) ? "border-primary bg-primary/5 shadow-sm" : "border-border"
+                              )}
+                            >
+                              <Checkbox
+                                id={`skill-${skill.id}`}
+                                checked={selectedSkillIds.includes(skill.id)}
+                                onCheckedChange={() => toggleSkill(skill.id)}
+                                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                              />
+                              <span className="text-sm font-medium">{skill.name}</span>
+                            </div>
+                          ))}
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">Không có kỹ năng nào cho danh mục này.</p>
+                      )}
+                    </div>
+                    {totalSkillPages > 1 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={skillPage <= 1}
+                          onClick={() => setSkillPage(p => Math.max(1, p - 1))}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          <span className="sr-only">Trước</span>
+                        </Button>
+                        <span className="text-sm text-muted-foreground">Trang {skillPage} / {totalSkillPages}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={skillPage >= totalSkillPages}
+                          onClick={() => setSkillPage(p => Math.min(totalSkillPages, p + 1))}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                          <span className="sr-only">Sau</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3 pt-4">
