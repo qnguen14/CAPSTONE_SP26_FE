@@ -103,10 +103,10 @@ export const API_ENDPOINTS = {
 
   PAYMENT: {
     GET: (id: string) => `/payment/${id}`,
-    CREATE: '/payment',
+    CREATE: '/payment/',
     CANCEL: (id: string) => `/payment/${id}/cancel`,
-    CALLBACK: 'payment/callback',
-    VERIFY: 'payment/verify'
+    CALLBACK: '/payment/callback',
+    VERIFY: '/payment/verify'
   },
 
   WALLET: {
