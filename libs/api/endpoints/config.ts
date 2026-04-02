@@ -134,8 +134,21 @@ export const API_ENDPOINTS = {
     ACCOUNT_BALANCE: '/withdraw/account-balance',
   },
 
-  NOTIFICATIONS: '/notifications',
-  MESSAGES: '/messages',
+  NOTIFICATIONS: {
+    GET_ALL: '/notification',
+    MARK_READ: '/notification/read',
+    MARK_ALL_READ: '/notification/read-all',
+    GET_ALL_UNREAD: '/notification/unread',
+    DELETE: (id: string) => `/notification/${id}`
+  },
+
+
+  MESSAGES: {
+    GET: '/messages',
+    SEND: '/messages',
+    READ: '/messages/read'
+  },
+
   UPLOAD: '/upload',
 } as const;
 
