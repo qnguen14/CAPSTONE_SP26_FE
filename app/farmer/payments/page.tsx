@@ -14,10 +14,12 @@ import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Clock, Banknote, Loader2, Al
 import { useToast } from "@/hooks/use-toast"
 import { PaymentService } from "@/libs/api/services/payment.service"
 import { WalletService } from "@/libs/api/services/wallet.service"
+import { BankService, type VietQRBank } from "@/libs/api/services/bank.service"
 import type { WalletDTO, WalletTransactionDTO, WithdrawalRequest, CreateWithdrawalRequest } from "@/libs/types/wallet.types"
-import { BinBank } from "@/libs/types/wallet.types"
+import { BinBank, TransactionType } from "@/libs/types/wallet.types"
 
 // Map BinBank enum to human-readable bank names
+// Map BinBank enum to human-readable bank names (Fallback if dynamic failed)
 const BANK_OPTIONS: { value: BinBank; label: string }[] = [
   { value: BinBank.Vietcombank, label: "Vietcombank" },
   { value: BinBank.BIDV, label: "BIDV" },
@@ -50,6 +52,14 @@ const WITHDRAWAL_STATUS_MAP: Record<string, { label: string; variant: "default" 
   PAID: { label: "Đã thanh toán", variant: "default", icon: <CheckCircle2 className="h-3 w-3" />, color: "bg-green-100 text-green-700 border-green-200" },
 }
 
+const TRANSACTION_TYPE_LABELS: Record<number, string> = {
+  [TransactionType.DEPOSIT]: "Nạp tiền",
+  [TransactionType.WITHDRAW]: "Rút tiền",
+  [TransactionType.JOB_PAYMENT]: "Thanh toán công việc",
+  [TransactionType.REFUND]: "Hoàn tiền",
+  [TransactionType.JOB_LOCK]: "Số dư Escrow",
+}
+
 export default function PaymentsPage() {
   const [depositAmount, setDepositAmount] = useState("")
   const [isDepositing, setIsDepositing] = useState(false)
@@ -63,6 +73,8 @@ export default function PaymentsPage() {
   // Withdraw dialog state
   const [withdrawOpen, setWithdrawOpen] = useState(false)
   const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [banks, setBanks] = useState<VietQRBank[]>([])
+  const [isLookingUpAccount, setIsLookingUpAccount] = useState(false)
   const [withdrawForm, setWithdrawForm] = useState({
     amount: "",
     toBin: "" as string,
@@ -78,7 +90,6 @@ export default function PaymentsPage() {
       if (walletRes.data) {
         setWallet(walletRes.data)
         const txRes = await WalletService.getTransactionsByWallet(walletRes.data.id, 1, 50)
-
         if (txRes.data) {
           const txItems = Array.isArray(txRes.data) ? txRes.data : (txRes.data as any).items || [];
           setTransactions(txItems)
@@ -103,10 +114,37 @@ export default function PaymentsPage() {
     }
   }
 
+  const fetchBanks = async () => {
+    const bankList = await BankService.getBanks()
+    if (bankList.length > 0) {
+      setBanks(bankList)
+    }
+  }
+
   useEffect(() => {
     fetchWalletData()
     fetchWithdrawals()
+    fetchBanks()
   }, [])
+
+  useEffect(() => {
+    const lookup = async () => {
+      if (withdrawForm.toBin && withdrawForm.toAccountNumber.length >= 6) {
+        setIsLookingUpAccount(true)
+        try {
+          const name = await BankService.lookupAccount(withdrawForm.toBin, withdrawForm.toAccountNumber)
+          if (name) {
+            setWithdrawForm(prev => ({ ...prev, accountHolderName: name }))
+          }
+        } finally {
+          setIsLookingUpAccount(false)
+        }
+      }
+    }
+
+    const timer = setTimeout(lookup, 800) // Debounce lookup
+    return () => clearTimeout(timer)
+  }, [withdrawForm.toBin, withdrawForm.toAccountNumber])
 
   const handleDeposit = async () => {
     if (!depositAmount || Number(depositAmount) <= 0) {
@@ -349,16 +387,26 @@ export default function PaymentsPage() {
                       <Select
                         value={withdrawForm.toBin}
                         onValueChange={(value) => setWithdrawForm(prev => ({ ...prev, toBin: value }))}
+                        disabled={banks.length === 0}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Chọn ngân hàng" />
+                          <SelectValue placeholder={banks.length === 0 ? "Đang tải ngân hàng..." : "Chọn ngân hàng"} />
                         </SelectTrigger>
-                        <SelectContent>
-                          {BANK_OPTIONS.map((bank) => (
-                            <SelectItem key={bank.value} value={bank.value.toString()}>
-                              {bank.label}
+                        <SelectContent className="max-h-60 w-100 overflow-y-auto">
+                          {banks.length > 0 ? (
+                            banks.map((bank) => (
+                              <SelectItem key={bank.bin} value={bank.bin}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold w-16 mr-10">{bank.shortName}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{bank.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="loading" disabled>
+                              Đang tải danh sách ngân hàng...
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -377,14 +425,18 @@ export default function PaymentsPage() {
 
                     {/* Account Holder Name */}
                     <div className="space-y-2">
-                      <Label htmlFor="holder-name">Tên chủ tài khoản</Label>
+                      <Label htmlFor="holder-name" className="flex items-center justify-between">
+                        <span>Tên chủ tài khoản</span>
+                        {isLookingUpAccount && <Loader2 className="h-3 w-3 animate-spin text-agro-green" />}
+                      </Label>
                       <Input
                         id="holder-name"
                         type="text"
-                        placeholder="VD: NGUYEN VAN A"
+                        placeholder={isLookingUpAccount ? "Đang tìm kiếm..." : "VD: NGUYEN VAN A"}
                         value={withdrawForm.accountHolderName}
                         onChange={(e) => setWithdrawForm(prev => ({ ...prev, accountHolderName: e.target.value.toUpperCase() }))}
-                        className="uppercase"
+                        className="uppercase font-medium"
+                        disabled
                       />
                     </div>
 
@@ -461,147 +513,77 @@ export default function PaymentsPage() {
       </div>
 
       {/* Tabbed History */}
-      <Tabs defaultValue="transactions" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="transactions">Lịch sử giao dịch</TabsTrigger>
-          <TabsTrigger value="withdrawals">
-            Yêu cầu rút tiền
-            {withdrawals.filter(w => w.status?.toUpperCase() === "PENDING").length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
-                {withdrawals.filter(w => w.status?.toUpperCase() === "PENDING").length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Lịch sử giao dịch</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Giao dịch</TableHead>
+                <TableHead>Ngày</TableHead>
+                <TableHead className="text-right">Số dư sau GD</TableHead>
+                <TableHead className="text-right">Số tiền</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.length === 0 && !isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                    Không có giao dịch nào
+                  </TableCell>
+                </TableRow>
+              ) : (
+                transactions.map((tx) => {
+                  const isIncoming = tx.type === TransactionType.DEPOSIT || tx.type === TransactionType.REFUND
+                  const displayType = TRANSACTION_TYPE_LABELS[tx.type] || "Giao dịch"
 
-        {/* Transactions Tab */}
-        <TabsContent value="transactions">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Lịch sử giao dịch</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Giao dịch</TableHead>
-                    <TableHead>Ngày</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead className="text-right">Số tiền</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.length === 0 && !isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                        Không có giao dịch nào
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    transactions.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`p-2 rounded-full ${tx.amount > 0
-                                ? "bg-agro-green/10"
-                                : "bg-agro-orange/10"
-                                }`}
-                            >
-                              {tx.amount > 0 ? (
-                                <ArrowDownLeft className="h-4 w-4 text-agro-green" />
-                              ) : (
-                                <ArrowUpRight className="h-4 w-4 text-agro-orange" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium">{tx.referenceCode}</p>
-                              <p className="text-xs text-muted-foreground">{tx.description}</p>
-                            </div>
+                  return (
+                    <TableRow key={tx.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-2 rounded-full ${isIncoming
+                              ? "bg-agro-green/10"
+                              : "bg-agro-orange/10"
+                              }`}
+                          >
+                            {isIncoming ? (
+                              <ArrowDownLeft className="h-4 w-4 text-agro-green" />
+                            ) : (
+                              <ArrowUpRight className="h-4 w-4 text-agro-orange" />
+                            )}
                           </div>
-                        </TableCell>
-                        <TableCell>{new Date(tx.createdAt).toLocaleDateString("vi-VN")}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="bg-agro-green/10 text-agro-green">
-                            Hoàn thành
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className={tx.amount > 0 ? "text-agro-green" : "text-foreground"}>
-                            {tx.amount > 0 ? "+" : ""}
-                            {tx.amount.toLocaleString()}đ
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Withdrawals Tab */}
-        <TabsContent value="withdrawals">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Yêu cầu rút tiền</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ngân hàng</TableHead>
-                    <TableHead>Số tài khoản</TableHead>
-                    <TableHead>Ngày tạo</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead className="text-right">Số tiền</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {withdrawals.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                        Chưa có yêu cầu rút tiền nào
+                          <div>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-medium text-sm">{tx.referenceCode}</p>
+                              <Badge variant="outline" className={`text-[10px] py-0 px-1.5 h-4 font-normal ${isIncoming ? "border-agro-green text-agro-green bg-agro-green/5" : "border-agro-orange text-agro-orange bg-agro-orange/5"}`}>
+                                {displayType}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{tx.description}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{new Date(tx.createdAt).toLocaleString("vi-VN")}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {tx.balanceAfter.toLocaleString()} VNĐ
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={isIncoming ? "text-agro-green font-medium" : "text-agro-orange font-medium"}>
+                          {isIncoming ? "+" : "-"}
+                          {Math.abs(tx.amount).toLocaleString()} VNĐ
+                        </span>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    withdrawals.map((wd) => {
-                      const statusInfo = getStatusInfo(wd.status)
-                      return (
-                        <TableRow key={wd.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-full bg-blue-50">
-                                <Banknote className="h-4 w-4 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{wd.bankName}</p>
-                                <p className="text-xs text-muted-foreground">{wd.accountHolderName}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">{wd.bankAccountNumber}</TableCell>
-                          <TableCell>{new Date(wd.createdAt).toLocaleDateString("vi-VN")}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`gap-1 ${statusInfo.color}`}>
-                              {statusInfo.icon}
-                              {statusInfo.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            -{wd.amount.toLocaleString()}đ
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
