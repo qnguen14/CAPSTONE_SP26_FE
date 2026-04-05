@@ -4,7 +4,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState }
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight, User, Users } from "lucide-react"
+import { ArrowLeft, Banknote, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight, User, Users } from "lucide-react"
 import { eachDayOfInterval, format, isSameDay, startOfDay } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -1262,24 +1262,35 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
             </Button>
 
             {/* Step indicator */}
-            <div className="flex items-center rounded-lg border bg-card p-1 shadow-sm">
-              <div
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-md transition-all",
-                  step === 1 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-background/20 text-xs font-bold">1</span>
-                <span className="text-sm font-medium">Soạn thảo</span>
+            <div className="flex items-center gap-4 py-2">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-500 shadow-sm",
+                  step === 1 ? "border-agro-green bg-agro-green text-white scale-110" : "border-agro-green bg-white text-agro-green"
+                )}>
+                  {step > 1 ? <Check className="h-5 w-5" /> : <span className="font-bold">1</span>}
+                </div>
+                <div className="hidden sm:block">
+                  <p className={cn("text-xs font-bold uppercase tracking-wider", step === 1 ? "text-agro-green" : "text-muted-foreground")}>Bước 1</p>
+                  <p className={cn("text-sm font-semibold", step === 1 ? "text-foreground" : "text-muted-foreground")}>Soạn thảo</p>
+                </div>
               </div>
-              <div
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-md transition-all",
-                  step === 2 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-background/20 text-xs font-bold">2</span>
-                <span className="text-sm font-medium">Xác nhận</span>
+
+              <div className="h-0.5 w-12 bg-muted rounded-full overflow-hidden">
+                <div className={cn("h-full bg-agro-green transition-all duration-1000", step === 2 ? "w-full" : "w-0")} />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-500 shadow-sm",
+                  step === 2 ? "border-agro-green bg-agro-green text-white scale-110" : "border-muted bg-white text-muted-foreground"
+                )}>
+                  <span className="font-bold">2</span>
+                </div>
+                <div className="hidden sm:block">
+                  <p className={cn("text-xs font-bold uppercase tracking-wider", step === 2 ? "text-agro-green" : "text-muted-foreground")}>Bước 2</p>
+                  <p className={cn("text-sm font-semibold", step === 2 ? "text-foreground" : "text-muted-foreground")}>Xác nhận</p>
+                </div>
               </div>
             </div>
           </div>
@@ -1287,68 +1298,51 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       </div>
 
       {postedJob ? (
-        <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-900/10 overflow-hidden">
-          <div className="h-2 bg-green-500 w-full" />
-          <CardHeader>
-            <div className="flex items-start gap-4">
-              <div className="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-400">
-                <CheckCheck className="h-8 w-8" />
+        <div className="max-w-3xl mx-auto animate-in zoom-in-95 duration-500">
+          <Card className="border-emerald-100 shadow-2xl shadow-emerald-500/10 overflow-hidden bg-white dark:bg-zinc-900">
+            <div className="h-2 bg-gradient-to-r from-agro-green to-emerald-400 w-full" />
+            <div className="p-8 md:p-12 text-center space-y-6">
+              <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 mb-2 relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-20" />
+                <CheckCheck className="h-10 w-10 relative z-10" />
               </div>
-              <div className="space-y-1">
-                <CardTitle className="text-2xl text-green-700 dark:text-green-400">
-                  {isEditMode ? "Cập nhật tin thành công!" : "Đăng tin thành công!"}
-                </CardTitle>
-                <CardDescription className="text-base text-green-600/80 dark:text-green-400/80">
+              
+              <div className="space-y-2">
+                <h3 className="text-3xl font-bold tracking-tight text-foreground">
+                  {isEditMode ? "Cập nhật thành công!" : "Đăng tin thành công!"}
+                </h3>
+                <p className="text-muted-foreground max-w-md mx-auto text-lg">
                   {isEditMode
-                    ? "Thông tin bài đăng đã được cập nhật thành công."
-                    : "Tin tuyển dụng của bạn đã được công khai. Ứng viên sẽ sớm liên hệ với bạn."}
-                </CardDescription>
+                    ? "Nội dung bài đăng đã được cập nhật và hiển thị đến các ứng viên."
+                    : "Tin tuyển dụng của bạn đã được đăng công khai và sẵn sàng nhận ứng viên."}
+                </p>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6 pt-2">
-            <div className="rounded-xl border bg-background/80 p-6 shadow-sm backdrop-blur-sm">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-1 border-l-4 border-primary pl-4">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Tiêu đề công việc</span>
-                  <p className="font-semibold text-lg">{postedJob.title}</p>
-                </div>
-                <div className="space-y-1 border-l-4 border-green-500 pl-4">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Mức thu nhập</span>
-                  <p className="font-semibold text-lg text-green-600 dark:text-green-400">{formatCurrency(postedJob.income)}</p>
-                </div>
-                <div className="space-y-1 border-l-4 border-orange-400 pl-4">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Thời gian làm việc</span>
-                  <p className="font-medium">
-                    {postedJob.scheduleType === "contract"
-                      ? `${formatDateDDMMYYYY(postedJob.contractStartDate ?? "")} - ${formatDateDDMMYYYY(postedJob.contractEndDate ?? "")}`
-                      : `${postedJob.daysToHire} ngày, ${postedJob.dailyStartTime?.slice(0, 5)} - ${postedJob.dailyEndTime?.slice(0, 5)}`
-                    }
-                  </p>
-                </div>
-                <div className="space-y-1 border-l-4 border-blue-400 pl-4">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Địa điểm</span>
-                  <p className="font-medium truncate" title={postedJob.location}>{postedJob.location}</p>
-                </div>
-              </div>
-            </div>
 
-            <div className="flex gap-4 justify-end pt-4">
-              <Button variant="outline" size="lg" asChild className="border-green-200 hover:bg-green-50 text-green-700 dark:border-green-800 dark:hover:bg-green-900/20">
-                <Link href="/farmer/jobs">Quản lý tin đăng</Link>
-              </Button>
-              {isEditMode ? (
-                <Button size="lg" onClick={() => setPostedJob(null)} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
-                  Chỉnh sửa lại
+              <div className="grid gap-4 py-8">
+                <div className="rounded-2xl border bg-muted/30 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-left space-y-1 w-full md:w-auto">
+                    <p className="text-sm font-medium text-muted-foreground">{postedJob.title}</p>
+                    <p className="text-2xl font-bold text-agro-green">{formatCurrency(postedJob.income)}</p>
+                  </div>
+                  <div className="h-px w-full md:h-12 md:w-px bg-border sm:hidden md:block" />
+                  <div className="text-left space-y-1 w-full md:w-auto">
+                    <p className="text-sm font-medium text-muted-foreground">Địa điểm</p>
+                    <p className="font-semibold text-foreground truncate max-w-[200px]">{postedJob.location}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                <Button size="lg" variant="outline" asChild className="h-12 px-8 font-semibold hover:bg-muted transition-all">
+                  <Link href="/farmer/jobs">Quản lý bài đăng</Link>
                 </Button>
-              ) : (
-                <Button size="lg" onClick={resetAll} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
-                  <Plus className="mr-2 h-4 w-4" /> Đăng tin khác
+                <Button size="lg" className="h-12 px-8 font-semibold bg-agro-green hover:bg-agro-green-dark text-white shadow-lg shadow-agro-green/20 transition-all transform hover:scale-105" onClick={() => (isEditMode ? setPostedJob(null) : resetAll())}>
+                  {isEditMode ? "Chỉnh sửa thêm" : "Tiếp tục đăng tin"}
                 </Button>
-              )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           {step === 1 ? (
@@ -1937,148 +1931,149 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
               </Card>
 
               {/* Action Bar */}
-              <div className="sticky bottom-4 z-1000 bg-background/95 backdrop-blur p-4 border rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="text-sm text-muted-foreground">
+              <div className="sticky bottom-6 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-5 border rounded-2xl shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="text-sm flex items-center gap-2">
                   {submitError ? (
-                    <span className="flex items-center text-destructive font-semibold"><Info className="mr-2 h-4 w-4" /> {submitError}</span>
+                    <span className="flex items-center text-rose-600 font-semibold bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100"><Info className="mr-2 h-4 w-4" /> {submitError}</span>
                   ) : (
-                    <span>Vui lòng điền đầy đủ thông tin có dấu <span className="text-destructive">*</span></span>
+                    <div className="flex items-center gap-2 text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                      <div className="h-1.5 w-1.5 rounded-full bg-agro-green animate-pulse" />
+                      <span>Vui lòng điền đủ thông tin <span className="text-destructive font-bold">*</span></span>
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <Button type="button" variant="outline" asChild className="flex-1 sm:flex-none">
+                  <Button type="button" variant="ghost" asChild className="flex-1 sm:flex-none font-semibold hover:bg-muted">
                     <Link href="/farmer/jobs">Hủy bỏ</Link>
                   </Button>
-                  <Button type="button" onClick={goToPreview} className="flex-1 sm:flex-none shadow-sm">
-                    {isEditMode ? "Xem trước cập nhật" : "Xem trước tin đăng"} <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                  <Button type="button" onClick={goToPreview} className="flex-1 sm:flex-none shadow-lg shadow-agro-green/10 bg-agro-green hover:bg-agro-green-dark text-white font-bold h-11 px-8">
+                    Tiếp theo <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
                   </Button>
                 </div>
               </div>
             </div>
           ) : (
             /* Step 2: Preview */
-            <div className="max-w-4xl mx-auto space-y-8 pb-10">
-              <Card className="shadow-lg border-2 border-primary/10">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <CardTitle className="text-2xl">Xác nhận thông tin</CardTitle>
-                      <CardDescription>Vui lòng kiểm tra kỹ nội dung tin tuyển dụng trước khi đăng công khai.</CardDescription>
+            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <Card className="shadow-2xl border-0 overflow-hidden rounded-3xl bg-white dark:bg-zinc-900">
+                <div className="bg-gradient-to-r from-agro-green/10 via-background to-background p-8 md:p-12 border-b">
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-2">
+                      <Badge className="bg-agro-green/10 text-agro-green border-agro-green/20 hover:bg-agro-green/20 mb-2">XÁC NHẬN BÀI ĐĂNG</Badge>
+                      <CardTitle className="text-3xl md:text-4xl font-extrabold tracking-tight">{title}</CardTitle>
+                      <CardDescription className="text-lg">Kiểm tra kỹ thông tin trước khi xuất bản tin tuyển dụng</CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={cn("px-3 py-1 font-normal", isUrgent ? "bg-red-100 text-red-700 border-red-200" : "bg-blue-50 text-blue-700 border-blue-200")}>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant="outline" className={cn("px-4 py-1.5 text-sm font-bold uppercase tracking-widest", isUrgent ? "bg-rose-50 text-rose-600 border-rose-200 shadow-sm" : "bg-blue-50 text-blue-700 border-blue-200")}>
                         {isUrgent ? "🔥 Tuyển gấp" : "Tiêu chuẩn"}
                       </Badge>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-8 pt-8 px-6 md:px-10">
-                  {/* Job Status Banner */}
-                  <div className="bg-primary/5 rounded-xl p-6 border border-primary/10">
-                    <h3 className="text-2xl font-bold text-foreground mb-4">{title}</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Mức lương</p>
-                        <div className="flex items-center font-medium text-primary"><DollarSign className="mr-1 h-4 w-4" /> {formatCurrency(incomeNumber)}</div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Hình thức</p>
-                        <div className="flex items-center font-medium"><CalendarRange className="mr-1 h-4 w-4" /> {scheduleType === "contract" ? "Khoán việc" : "Theo ngày"}</div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Số lượng</p>
-                        <div className="flex items-center font-medium"><User className="mr-1 h-4 w-4" /> {workersNeededNumber} người</div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Địa điểm</p>
-                        <div className="flex items-center font-medium truncate" title={selectedFarmLabel}><MapPin className="mr-1 h-4 w-4" /> {selectedFarmLabel}</div>
-                      </div>
-                      <div className="space-y-1 bg-primary/10 p-3 rounded-md col-span-2 md:col-span-4 flex items-center justify-between border border-primary/20 mt-2">
-                        <span className="font-semibold text-primary uppercase text-sm">Tổng chi phí dự kiến:</span>
-                        <span className="text-xl font-bold text-primary">{formatCurrency(scheduleType === "contract" ? incomeNumber : incomeNumber * workersNeededNumber * selectedDailyDaysCount)}</span>
-                      </div>
+                </div>
+                
+                <CardContent className="p-8 md:p-12 space-y-12">
+                  {/* Key Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-muted/20 p-8 rounded-3xl border border-muted-foreground/10">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Mức lương</p>
+                      <div className="flex items-center text-xl font-extrabold text-agro-green"><Banknote className="mr-2 h-5 w-5" /> {formatCurrency(incomeNumber)}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Loại hình</p>
+                      <div className="flex items-center text-xl font-bold"><CalendarRange className="mr-2 h-5 w-5 text-indigo-500" /> {scheduleType === "contract" ? "Khoán" : "Theo ngày"}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Nhân công</p>
+                      <div className="flex items-center text-xl font-bold"><Users className="mr-2 h-5 w-5 text-amber-500" /> {workersNeededNumber} người</div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Khu vực</p>
+                      <div className="flex items-center text-xl font-bold truncate" title={selectedFarmLabel}><MapPin className="mr-2 h-5 w-5 text-rose-500" /> {selectedFarmLabel.split(',')[0]}</div>
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-3 gap-8">
-                    <div className="md:col-span-2 space-y-6">
-                      <div className="space-y-3">
-                        <h4 className="flex items-center text-sm font-bold uppercase text-muted-foreground tracking-wide border-b pb-2">
-                          <AlignLeft className="mr-2 h-4 w-4" /> Chi tiết công việc
+                  <div className="flex items-center justify-between bg-agro-green p-6 rounded-2xl text-white shadow-xl shadow-agro-green/20">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase opacity-80 mb-1">Tổng chi phí dự tính</p>
+                      <p className="text-2xl font-black">{formatCurrency(scheduleType === "contract" ? incomeNumber : incomeNumber * workersNeededNumber * selectedDailyDaysCount)}</p>
+                    </div>
+                    <div className="bg-white/20 p-3 rounded-xl">
+                      <DollarSign className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-5 gap-12">
+                    <div className="md:col-span-3 space-y-8">
+                      <div className="space-y-4">
+                        <h4 className="flex items-center text-xs font-black uppercase text-foreground bg-muted/50 w-fit px-3 py-1 rounded-full">
+                           Mô tả công việc
                         </h4>
-                        <div className="bg-muted/10 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 border">
+                        <div className="text-lg leading-relaxed text-muted-foreground whitespace-pre-wrap">
                           {description}
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <h4 className="flex items-center text-sm font-bold uppercase text-muted-foreground tracking-wide border-b pb-2">
-                          <Award className="mr-2 h-4 w-4" /> Yêu cầu kỹ năng
+                      <div className="space-y-4">
+                        <h4 className="flex items-center text-xs font-black uppercase text-foreground bg-muted/50 w-fit px-3 py-1 rounded-full">
+                           Kỹ năng kinh nghiệm
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {selectedSkillIds.length > 0 ? (
                             selectedSkillIds.map(id => (
-                              <Badge key={id} variant="secondary" className="px-3 py-1">{getSkillLabel(id)}</Badge>
+                              <Badge key={id} variant="secondary" className="px-4 py-1.5 font-bold bg-secondary text-secondary-foreground">{getSkillLabel(id)}</Badge>
                             ))
                           ) : (
-                            <span className="text-sm text-muted-foreground italic">Không yêu cầu kỹ năng đặc biệt</span>
+                            <span className="text-muted-foreground italic">Không yêu cầu</span>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <h4 className="flex items-center text-sm font-bold uppercase text-muted-foreground tracking-wide border-b pb-2">
-                          <CalendarRange className="mr-2 h-4 w-4" /> Thời gian
+                    <div className="md:col-span-2 space-y-8">
+                      <div className="space-y-4">
+                        <h4 className="flex items-center text-xs font-black uppercase text-foreground bg-muted/50 w-fit px-3 py-1 rounded-full">
+                           Thời gian cụ thể
                         </h4>
-                        <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-100 dark:border-blue-900 space-y-2 text-sm">
+                        <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-6 border space-y-4">
                           {scheduleType === "contract" ? (
-                            <>
-                              <div className="flex justify-between"><span>Bắt đầu:</span> <span className="font-semibold">{formatDateDDMMYYYY(contractStartDate)}</span></div>
-                              <div className="flex justify-between"><span>Kết thúc:</span> <span className="font-semibold">{formatDateDDMMYYYY(contractEndDate)}</span></div>
-                            </>
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center"><span className="text-muted-foreground font-medium">Ngày bắt đầu:</span> <span className="font-bold text-lg">{formatDateDDMMYYYY(contractStartDate)}</span></div>
+                              <div className="flex justify-between items-center"><span className="text-muted-foreground font-medium">Ngày kết thúc:</span> <span className="font-bold text-lg">{formatDateDDMMYYYY(contractEndDate)}</span></div>
+                            </div>
                           ) : (
-                            <>
-                              <div className="flex justify-between"><span>Số ngày:</span> <span className="font-semibold">{selectedDailyDaysCount} ngày</span></div>
-                              <div className="flex justify-between"><span>Ca làm:</span> <span className="font-semibold">{dailyStartTime} - {dailyEndTime}</span></div>
-                            </>
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center"><span className="text-muted-foreground font-medium">Tổng số ngày:</span> <span className="font-bold text-lg text-agro-green">{selectedDailyDaysCount} ngày</span></div>
+                              <div className="flex justify-between items-center"><span className="text-muted-foreground font-medium">Khung giờ làm:</span> <span className="font-bold text-lg">{dailyStartTime} - {dailyEndTime}</span></div>
+                            </div>
                           )}
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <h4 className="flex items-center text-sm font-bold uppercase text-muted-foreground tracking-wide border-b pb-2">
-                          <Gift className="mr-2 h-4 w-4" /> Quyền lợi
+                      <div className="space-y-4">
+                        <h4 className="flex items-center text-xs font-black uppercase text-foreground bg-muted/50 w-fit px-3 py-1 rounded-full">
+                           Quyền lợi & Yêu cầu
                         </h4>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid gap-3">
                           {benefits.length > 0 ? benefits.map(b => (
-                            <Badge key={b} variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">{b}</Badge>
-                          )) : <span className="text-sm text-muted-foreground">Cơ bản</span>}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <h4 className="flex items-center text-sm font-bold uppercase text-muted-foreground tracking-wide border-b pb-2">
-                          <Info className="mr-2 h-4 w-4" /> Yêu cầu khác
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
+                            <div key={b} className="flex items-center gap-2 text-sm font-semibold text-emerald-600"><CheckCheck className="h-4 w-4 shrink-0" /> {b}</div>
+                          )) : null}
                           {requirements.length > 0 ? requirements.map(r => (
-                            <Badge key={r} variant="outline">{r}</Badge>
-                          )) : <span className="text-sm text-muted-foreground">Không có</span>}
+                            <div key={r} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Plus className="h-4 w-4 shrink-0" /> {r}</div>
+                          )) : null}
                         </div>
                       </div>
                     </div>
                   </div>
                 </CardContent>
-                <CardContent className="bg-muted/20 border-t p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                  {submitError && <p className="text-destructive font-semibold flex items-center"><Info className="mr-2 h-4 w-4" /> {submitError}</p>}
+                
+                <CardContent className="bg-muted/10 border-t p-8 md:p-12 flex flex-col sm:flex-row justify-between items-center gap-6">
+                  {submitError && <p className="text-rose-600 font-bold flex items-center bg-rose-50 px-4 py-2 rounded-xl"><Info className="mr-2 h-4 w-4" /> {submitError}</p>}
                   <div className="flex gap-4 w-full sm:w-auto ml-auto">
-                    <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1 sm:flex-none">
+                    <Button type="button" variant="ghost" onClick={() => setStep(1)} className="flex-1 sm:flex-none font-bold h-12">
                       <ArrowLeft className="mr-2 h-4 w-4" /> Chỉnh sửa
                     </Button>
-                    <Button type="button" size="lg" onClick={submitJob} disabled={isSubmitting} className="flex-1 sm:flex-none shadow-md min-w-[200px]">
-                      {isSubmitting ? "Đang xử lý..." : isEditMode ? "Xác nhận & Cập nhật" : "Xác nhận & Đăng tin"}
+                    <Button type="button" size="lg" onClick={submitJob} disabled={isSubmitting} className="flex-1 sm:flex-none shadow-2xl shadow-agro-green/20 bg-agro-green hover:bg-agro-green-dark text-white font-black h-14 px-10 rounded-2xl">
+                      {isSubmitting ? "ĐANG XỬ LÝ..." : isEditMode ? "CẬP NHẬT NGAY" : "XÁC NHẬN & ĐĂNG TIN"}
                     </Button>
                   </div>
                 </CardContent>
