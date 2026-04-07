@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Briefcase, Users, DollarSign, Clock, ChevronRight, Star, Cloud, Droplets, Wind, X, RefreshCw, ChevronDown, Plus, Sparkles, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { farmerService } from "@/libs/api/services/farmer.service"
-import type { FarmerProfile } from "@/libs/types"
+import type { FarmerProfile, DashboardStats } from "@/libs/types"
 import { useWeather } from "@/hooks/use-weather"
 import Image from "next/image"
 import { ActivityChart, JobStatusChart } from "@/components/farmer/dashboard-charts"
@@ -16,22 +16,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { jobApplicationService } from "@/libs/api/services/jobApplication.service"
 import { ApplicationStatusId } from "@/libs/types"
 import type { ApplicationDTO } from "@/libs/types"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, parseISO } from "date-fns"
 import { vi } from "date-fns/locale"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-
-const scheduledDates = [
-  new Date('2026-01-15'),
-  new Date('2026-01-16'),
-  new Date('2026-01-18'),
-  new Date('2026-01-20'),
-]
+import { formatCurrency } from "@/libs/utils/utils"
 
 export default function FarmerDashboard() {
   const [date, setDate] = useState<Date | undefined>(undefined)
-  const [profile, setProfile] = useState<FarmerProfile | null>(null)
+  const [dashboardData, setDashboardData] = useState<DashboardStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [weatherPopup, setWeatherPopup] = useState<{ date: Date; position: { x: number; y: number } } | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -75,17 +69,21 @@ export default function FarmerDashboard() {
     }
   }, [weatherPopup])
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await farmerService.getProfile()
-        setProfile(response.data)
-      } catch (error) {
-        console.error('Failed to fetch farmer profile:', error)
-      }
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true)
+      const response = await farmerService.getDashboardStats()
+      setDashboardData(response.data)
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error)
+      toast.error("Không thể tải dữ liệu tổng quan")
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    fetchProfile()
+  useEffect(() => {
+    fetchDashboardData()
   }, [])
 
   const fetchPendingApplications = async () => {
@@ -111,6 +109,7 @@ export default function FarmerDashboard() {
       await jobApplicationService.approveApplicant(applicationId)
       toast.success("Hồ sơ đã được duyệt")
       await fetchPendingApplications()
+      await fetchDashboardData() // Refresh counters
     } catch (error) {
       console.error('Failed to approve application:', error)
       toast.error("Không thể duyệt hồ sơ")
@@ -122,21 +121,50 @@ export default function FarmerDashboard() {
       await jobApplicationService.rejectApplicant(applicationId)
       toast.info("Đã từ chối hồ sơ")
       await fetchPendingApplications()
+      await fetchDashboardData() // Refresh counters
     } catch (error) {
       console.error('Failed to reject application:', error)
       toast.error("Không thể từ chối hồ sơ")
     }
   }
 
-  const stats = [
-    { label: "Tổng việc đã đăng", value: profile?.totalJobsPosted?.toString() || "0", icon: Briefcase, color: "text-agro-green", bgColor: "bg-agro-green/10" },
-    { label: "Việc đã hoàn thành", value: profile?.totalJobsCompleted?.toString() || "0", icon: Users, color: "text-agro-orange", bgColor: "bg-agro-orange/10" },
+  const scheduledDates = useMemo(() => {
+    if (!dashboardData?.schedulesDates) return []
+    return dashboardData.schedulesDates.map(s => parseISO(s.scheduleDate))
+  }, [dashboardData?.schedulesDates])
+
+  const metrics = [
     {
-      label: "Đánh giá trung bình",
-      value: profile?.averageRating?.toFixed(1) || "0.0",
-      icon: Star,
+      label: "Số dư khả dụng",
+      value: formatCurrency(dashboardData?.wallet.availableBalance || 0),
+      icon: DollarSign,
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-100",
+      description: `Đang khóa: ${formatCurrency(dashboardData?.wallet.lockedBalance || 0)}`
+    },
+    {
+      label: "Ứng tuyển mới",
+      value: dashboardData?.counters.pendingApplications.toString() || "0",
+      icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
+      description: "Cần phản hồi gấp"
+    },
+    {
+      label: "Báo cáo chờ duyệt",
+      value: dashboardData?.counters.workReportsToApprove.toString() || "0",
+      icon: Clock,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
+      description: "Đang chờ thanh toán"
+    },
+    {
+      label: "Đang thuê",
+      value: dashboardData?.counters.totalWorkersCurrentlyHired.toString() || "0",
+      icon: Briefcase,
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
+      description: "Nhân công đang làm việc"
     },
   ]
 
@@ -148,14 +176,28 @@ export default function FarmerDashboard() {
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl opacity-50 group-hover:bg-teal-500/20 transition-all duration-500" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-3">
-              Chào ngày mới, <span className="text-agro-green">{profile?.contactName || 'Bạn'}</span>!
-            </h1>
-            <p className="text-muted-foreground text-lg flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-400 animate-pulse" />
-              Hôm nay công việc của bạn hoạt động thế nào?
-            </p>
+          <div className="flex items-center gap-5">
+            <Avatar className="h-16 w-16 border-2 border-agro-green/20 shadow-sm">
+              <AvatarImage src={dashboardData?.profile.avatarUrl} className="object-cover" />
+              <AvatarFallback className="bg-agro-green/10 text-agro-green text-xl font-bold">
+                {dashboardData?.profile.contactName?.charAt(0) || "B"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-3">
+                Chào ngày mới, <span className="text-agro-green">{dashboardData?.profile.contactName || 'Bạn'}</span>
+              </h1>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  <span>{dashboardData?.profile.averageRating.toFixed(1) || "5.0"} Đánh giá</span>
+                </div>
+                <span>•</span>
+                <span>{dashboardData?.profile.totalJobsPosted || 0} Bài đăng</span>
+                <span>•</span>
+                <span>{dashboardData?.profile.totalJobsCompleted || 0} Hoàn thành</span>
+              </div>
+            </div>
           </div>
           <Link href="/farmer/create-job">
             <Button size="lg" className="bg-agro-green hover:bg-agro-green-dark text-white rounded-full px-6 shadow-lg shadow-agro-green/20 hover:shadow-xl hover:shadow-agro-green/30 transition-all hover:-translate-y-0.5 active:translate-y-0">
@@ -166,17 +208,20 @@ export default function FarmerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {stats.map((stat, idx) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metrics.map((metric, idx) => (
           <Card key={idx} className="shadow-sm border-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-6 w-6 ${stat.color}`} />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4 mb-2">
+                <div className={`p-2.5 rounded-lg ${metric.bgColor}`}>
+                  <metric.icon className={`h-5 w-5 ${metric.color}`} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{metric.label}</p>
+                  <p className={`text-xl font-bold ${metric.color}`}>{metric.value}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-              </div>
+              <p className="text-[10px] text-muted-foreground italic pl-1">{metric.description}</p>
             </CardContent>
           </Card>
         ))}
@@ -184,8 +229,8 @@ export default function FarmerDashboard() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ActivityChart />
-        <JobStatusChart />
+        <ActivityChart data={dashboardData?.weeklyActivity || []} />
+        <JobStatusChart data={dashboardData?.jobStatusDistribution || []} />
       </div>
 
       {/* Stats Cards */}

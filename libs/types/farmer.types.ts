@@ -30,16 +30,22 @@ export interface FarmerProfile {
 }
 
 export interface DashboardStats {
-  profile: FarmerProfile;
+  profile: {
+    contactName: string;
+    averageRating: number;
+    totalJobsPosted: number;
+    totalJobsCompleted: number;
+    avatarUrl: string;
+  };
   wallet: {
     availableBalance: number;
     lockedBalance: number;
-  }
+  };
   counters: {
     pendingApplications: number;
     workReportsToApprove: number;
     totalWorkersCurrentlyHired: number;
-  }
+  };
   activeJobs: {
     id: string;
     title: string;
@@ -48,5 +54,18 @@ export interface DashboardStats {
     isUrgent: boolean;
     statusId: number;
     createdAt: string;
+  }[];
+  weeklyActivity: {
+    name: string;
+    applicationsCount: number;
+    jobPostsCount: number;
+  }[];
+  jobStatusDistribution: {
+    statusId: number;
+    statusName: string;
+    count: number;
+  }[];
+  schedulesDates: {
+    scheduleDate: string;
   }[];
 }

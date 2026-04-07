@@ -28,7 +28,7 @@ export const API_ENDPOINTS = {
     PROFILE: '/farmer',
     UPDATEPROFILE: '/farmer',
     UPDATEAVATAR: '/farmer/upload-avatar',
-    DASHBOARD: '/dashboard/farmer',
+    DASHBOARD: '/farmer/dashboard',
   },
 
   JOBS: {
