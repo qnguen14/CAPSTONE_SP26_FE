@@ -26,6 +26,7 @@ import {
   MessageCircle,
   Loader2,
   Home,
+  PersonStandingIcon,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { farmerService, authService, notificationService } from "@/libs/api/services"
@@ -99,6 +100,7 @@ export default function FarmerLayout({
   const navItems = [
     { icon: LayoutDashboard, label: "Tổng quan", href: "/farmer/dashboard" },
     { icon: Leaf, label: "Bài đăng", href: "/farmer/jobs" },
+    { icon: PersonStandingIcon, label: "Ứng viên", href: "/farmer/applications" },
     { icon: PlusCircle, label: "Đăng tin", href: "/farmer/create-job" },
     { icon: MessageCircle, label: "Tin nhắn", href: "/farmer/messages" },
     { icon: Wallet, label: "Thanh toán", href: "/farmer/payments" },

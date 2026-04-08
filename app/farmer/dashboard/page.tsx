@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { Briefcase, Users, DollarSign, Clock, ChevronRight, Star, Cloud, Droplets, Wind, X, RefreshCw, ChevronDown, Plus, Sparkles, Loader2 } from "lucide-react"
+import { Briefcase, Users, DollarSign, Clock, ChevronRight, ChevronLeft, Star, Cloud, Droplets, Wind, X, RefreshCw, ChevronDown, Plus, Sparkles, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { farmerService } from "@/libs/api/services/farmer.service"
@@ -32,6 +32,8 @@ export default function FarmerDashboard() {
   const popupRef = useRef<HTMLDivElement>(null)
   const [pendingApplications, setPendingApplications] = useState<ApplicationDTO[]>([])
   const [isLoadingApplications, setIsLoadingApplications] = useState(false)
+  const [applicationsPage, setApplicationsPage] = useState(1)
+  const [applicationsTotalPages, setApplicationsTotalPages] = useState(1)
   const { currentWeather, loading: weatherLoading, refetch } = useWeather({
     useCurrentUserAddress: true,
   })
@@ -86,13 +88,16 @@ export default function FarmerDashboard() {
     fetchDashboardData()
   }, [])
 
-  const fetchPendingApplications = async () => {
+  const fetchPendingApplications = async (page: number = 1) => {
     try {
       setIsLoadingApplications(true)
-      const response = await jobApplicationService.getFarmerApplications({
-        statusId: ApplicationStatusId.Pending
+      const response = await jobApplicationService.getJobApplicationsByFarmer({
+        statusId: ApplicationStatusId.Pending,
+        page: page,
+        limit: 5
       })
-      setPendingApplications(response.data)
+      setPendingApplications(response.data.data)
+      setApplicationsTotalPages(response.data.pagination?.totalPages || 1)
     } catch (error) {
       console.error('Failed to fetch pending applications:', error)
     } finally {
@@ -101,8 +106,8 @@ export default function FarmerDashboard() {
   }
 
   useEffect(() => {
-    fetchPendingApplications()
-  }, [])
+    fetchPendingApplications(applicationsPage)
+  }, [applicationsPage])
 
   const handleApproveApplication = async (applicationId: string) => {
     try {
@@ -334,6 +339,34 @@ export default function FarmerDashboard() {
                           </div>
                         </div>
                       ))
+                    )}
+
+                    {applicationsTotalPages > 1 && (
+                      <div className="flex items-center justify-between pt-4 border-t mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setApplicationsPage(prev => Math.max(1, prev - 1))}
+                          disabled={applicationsPage === 1 || isLoadingApplications}
+                          className="h-8"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Trước
+                        </Button>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {applicationsPage} / {applicationsTotalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setApplicationsPage(prev => Math.min(applicationsTotalPages, prev + 1))}
+                          disabled={applicationsPage === applicationsTotalPages || isLoadingApplications}
+                          className="h-8"
+                        >
+                          Sau
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>

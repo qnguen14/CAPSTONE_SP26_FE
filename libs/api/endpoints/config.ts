@@ -33,8 +33,8 @@ export const API_ENDPOINTS = {
 
   JOBS: {
     GET: '/job/post',
-    MY_JOB_POSTS: '/job/post/farmer/history',
-    GET_BY_FARMER: (farmerId: string) => `/job/post/farmer/${farmerId}`,
+    GET_BY_FARMER_HISTORY: '/job/post/farmer/history',
+    GET_BY_FARMER: `/job/post/farmer`,
     DETAIL: (id: string) => `/job/post/${id}`,
     FILTERED_JOBS: '/job/post/filter',
     FILTERED_JOBS_BY_FARMER: '/job/post/filter/farmer',
@@ -46,6 +46,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/job/post/${id}`,
     JOB_APPLICATIONS: '/job/application',
     JOB_APPLICATIONS_BY_POST: (jobPostId: string) => `/job/application/post/${jobPostId}`,
+    JOB_APPLICATIONS_BY_FARMER: `/job/application/farmer`,
     APPLICATION_DETAIL: (id: string) => `/job/application/${id}`,
     RESPOND_APPLICANT: (id: string) => `/job/application/respond/${id}`,
     SAVE_DRAFT: '/job/post/draft',

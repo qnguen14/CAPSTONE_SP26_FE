@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, Clock, FileText, InfoIcon, MailIcon, MapPin, Play, RotateCw, Star, Users, XCircle } from "lucide-react"
+import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, InfoIcon, MailIcon, MapPin, Play, RotateCw, Star, Users, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -71,6 +71,10 @@ export default function FarmerJobDetailPage() {
   const [approvalFeedback, setApprovalFeedback] = useState("")
   const [approvalPercent, setApprovalPercent] = useState(100)
   const [isLoadingSingleJobDetail, setIsLoadingSingleJobDetail] = useState(false)
+  const [applicationsPage, setApplicationsPage] = useState(1)
+  const [applicationsTotalPages, setApplicationsTotalPages] = useState(1)
+  const [jobDetailsPage, setJobDetailsPage] = useState(1)
+  const [jobDetailsTotalPages, setJobDetailsTotalPages] = useState(1)
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -132,36 +136,29 @@ export default function FarmerJobDetailPage() {
   }
 
   const normalizeStatus = (statusId?: JobPostStatus, startDate?: string) => {
-    if (startDate) {
+    if (statusId === JobPostStatus.Published && startDate) {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const jobStart = new Date(startDate)
-      if (jobStart <= today && statusId === JobPostStatus.Published) {
+      if (jobStart < today) {
         return "passed"
       }
     }
 
-    if (statusId === JobPostStatus.Published) {
-      return "active"
+    switch (statusId) {
+      case JobPostStatus.Published:
+        return "active"
+      case JobPostStatus.Closed:
+        return "filled"
+      case JobPostStatus.InProgress:
+        return "in-progress"
+      case JobPostStatus.Completed:
+        return "completed"
+      case JobPostStatus.Cancelled:
+        return "cancelled"
+      default:
+        return "active"
     }
-
-    if (statusId === JobPostStatus.Closed) {
-      return "filled"
-    }
-
-    if (statusId === JobPostStatus.InProgress) {
-      return "in-progress"
-    }
-
-    if (statusId === JobPostStatus.Completed) {
-      return "completed"
-    }
-
-    if (statusId === JobPostStatus.Cancelled) {
-      return "cancelled"
-    }
-
-    return "active"
   }
 
   const status = useMemo(() => normalizeStatus(job?.statusId, job?.startDate), [job?.statusId, job?.startDate])
@@ -169,35 +166,47 @@ export default function FarmerJobDetailPage() {
   const jobStatusBadge = useMemo(() => {
     switch (status) {
       case "active":
-        return <Badge className="bg-emerald-100/80 text-emerald-800 border-emerald-200 px-3 py-1 flex items-center gap-1.5 ring-offset-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Đang tuyển
-        </Badge>
+        return (
+          <Badge className="bg-emerald-100/80 text-emerald-800 border-emerald-200 px-3 py-1 flex items-center gap-1.5 ring-offset-background transition-all hover:bg-emerald-100">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Đang tuyển dụng
+          </Badge>
+        )
       case "filled":
-        return <Badge className="bg-amber-100 text-red-800 border-red-200 px-3 py-1 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <Clock className="h-3.5 w-3.5" />
-          Đã đủ người
-        </Badge>
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200 px-3 py-1 flex items-center gap-1.5 hover:bg-blue-100">
+            <Users className="h-3.5 w-3.5" />
+            Đã đủ người
+          </Badge>
+        )
       case "in-progress":
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200 px-3 py-1 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <Clock className="h-3.5 w-3.5" />
-          Đang trong quá trình
-        </Badge>
+        return (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200 px-3 py-1 flex items-center gap-1.5 hover:bg-amber-100">
+            <RotateCw className="h-3.5 w-3.5 animate-spin-slow" />
+            Đang thực hiện
+          </Badge>
+        )
       case "completed":
-        return <Badge variant="outline" className="px-3 py-1 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Hoàn thành
-        </Badge>
+        return (
+          <Badge className="bg-slate-100 text-slate-800 border-slate-200 px-3 py-1 flex items-center gap-1.5 hover:bg-slate-200">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Đã hoàn thành
+          </Badge>
+        )
       case "cancelled":
-        return <Badge className="bg-rose-100 text-rose-800 border-rose-200 px-3 py-1 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <XCircle className="h-3.5 w-3.5" />
-          Đã hủy
-        </Badge>
+        return (
+          <Badge className="bg-rose-100 text-rose-800 border-rose-200 px-3 py-1 flex items-center gap-1.5 hover:bg-rose-100">
+            <XCircle className="h-3.5 w-3.5" />
+            Đã hủy bài
+          </Badge>
+        )
       case "passed":
-        return <Badge className="bg-rose-100 text-rose-800 border-rose-200 px-3 py-1 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <XCircle className="h-3.5 w-3.5" />
-          Quá hạn
-        </Badge>
+        return (
+          <Badge className="bg-rose-100 text-rose-800 border-rose-200 px-3 py-1 flex items-center gap-1.5 hover:bg-rose-100">
+            <Clock className="h-3.5 w-3.5" />
+            Hết hạn tuyển
+          </Badge>
+        )
       default:
         return null
     }
@@ -216,29 +225,19 @@ export default function FarmerJobDetailPage() {
     }
   }
 
-  const loadApplications = async (currentJobId: string) => {
+  const loadApplications = async (currentJobId: string, page: number = 1) => {
     try {
       setIsLoadingApplications(true)
       setApplicationsError(null)
 
-      const response = await jobApplicationService.getJobApplicationsByPost({
-        jobId: currentJobId,
+      const response = await jobApplicationService.getJobApplicationsByPost(currentJobId, {
         includeAll: true,
+        limit: 5,
+        page: page,
       })
 
-
-      const payload = response.data as
-        | PaginatedResponse<ApplicationDTO>
-        | ApplicationDTO[]
-        | { data?: ApplicationDTO[] }
-
-      if (Array.isArray(payload)) {
-        setApplications(payload)
-      } else if (Array.isArray(payload?.data)) {
-        setApplications(payload.data)
-      } else {
-        setApplications([])
-      }
+      setApplications(response.data.data)
+      setApplicationsTotalPages(response.data.pagination?.totalPages || 1)
     } catch (applicationsFetchError) {
       console.error(applicationsFetchError)
       setApplicationsError("Không thể tải danh sách ứng tuyển.")
@@ -366,8 +365,12 @@ export default function FarmerJobDetailPage() {
 
       // Refresh job detail in the list
       if (jobId) {
-        const response = await jobDetailsService.getJobDetailsByPost(jobId)
-        setJobDetails(response.data)
+        const response = await jobDetailsService.getJobDetailsByPost(jobId, {
+          page: jobDetailsPage,
+          limit: 5
+        })
+        setJobDetails(response.data.data)
+        setJobDetailsTotalPages(response.data.pagination?.totalPages || 1)
       }
 
       // Close dialog or update current view
@@ -442,8 +445,8 @@ export default function FarmerJobDetailPage() {
       return
     }
 
-    void loadApplications(jobId)
-  }, [jobId])
+    void loadApplications(jobId, applicationsPage)
+  }, [jobId, applicationsPage])
 
   useEffect(() => {
     if (job && jobId &&
@@ -453,8 +456,12 @@ export default function FarmerJobDetailPage() {
       const loadJobDetails = async () => {
         try {
           setIsLoadingJobDetails(true)
-          const response = await jobDetailsService.getJobDetailsByPost(jobId)
-          setJobDetails(response.data)
+          const response = await jobDetailsService.getJobDetailsByPost(jobId, {
+            page: jobDetailsPage,
+            limit: 5
+          })
+          setJobDetails(response.data.data)
+          setJobDetailsTotalPages(response.data.pagination?.totalPages || 1)
         } catch (err) {
           console.error("Failed to fetch job details:", err)
         } finally {
@@ -463,7 +470,7 @@ export default function FarmerJobDetailPage() {
       }
       void loadJobDetails()
     }
-  }, [job, jobId])
+  }, [job, jobId, jobDetailsPage])
 
   const jobTypeLabel = job?.jobTypeId === 1 ? "Khoán" : job?.jobTypeId === 2 ? "Ngày" : "-"
 
@@ -804,6 +811,34 @@ export default function FarmerJobDetailPage() {
                         </div>
                       </div>
                     ))}
+
+                    {applicationsTotalPages > 1 && (
+                      <div className="flex items-center justify-between pt-4 border-t mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setApplicationsPage(prev => Math.max(1, prev - 1))}
+                          disabled={applicationsPage === 1 || isLoadingApplications}
+                          className="h-8"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Trước
+                        </Button>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {applicationsPage} / {applicationsTotalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setApplicationsPage(prev => Math.min(applicationsTotalPages, prev + 1))}
+                          disabled={applicationsPage === applicationsTotalPages || isLoadingApplications}
+                          className="h-8"
+                        >
+                          Sau
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -830,8 +865,8 @@ export default function FarmerJobDetailPage() {
                         onClick={() => {
                           if (jobId) {
                             setIsLoadingJobDetails(true)
-                            jobDetailsService.getJobDetailsByPost(jobId)
-                              .then(res => setJobDetails(res.data))
+                            jobDetailsService.getJobDetailsByPost(jobId, { page: 1, limit: 100 })
+                              .then(res => setJobDetails(res.data.data))
                               .finally(() => setIsLoadingJobDetails(false))
                           }
                         }}
@@ -894,6 +929,34 @@ export default function FarmerJobDetailPage() {
                               )}
                             </div>
                           ))}
+
+                          {jobDetailsTotalPages > 1 && (
+                            <div className="flex items-center justify-center gap-4 pt-6 border-t mt-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setJobDetailsPage(prev => Math.max(1, prev - 1))}
+                                disabled={jobDetailsPage === 1 || isLoadingJobDetails}
+                                className="h-8"
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Trang trước
+                              </Button>
+                              <span className="text-sm font-medium">
+                                Trang {jobDetailsPage} / {jobDetailsTotalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setJobDetailsPage(prev => Math.min(jobDetailsTotalPages, prev + 1))}
+                                disabled={jobDetailsPage === jobDetailsTotalPages || isLoadingJobDetails}
+                                className="h-8"
+                              >
+                                Trang sau
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </CardContent>

@@ -34,11 +34,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { farmerService } from "@/libs/api/services/farmer.service"
 import { jobCategoryService } from "@/libs/api/services/job-category.service"
 import { skillService } from "@/libs/api/services/skill.service"
 import { useProvinces } from "@/hooks/use-provinces"
-import type { Application, Job, JobCategory, PaginatedResponse, Skill } from "@/libs/types"
+import type { ApplicationDTO, Job, JobCategory, PaginatedResponse, Skill } from "@/libs/types"
+import { ApplicationStatusId, JobPostStatus } from "@/libs/types"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +68,7 @@ export function FarmerJobsList() {
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
   const [isApplicationsDialogOpen, setIsApplicationsDialogOpen] = useState(false)
   const [selectedJobForApplications, setSelectedJobForApplications] = useState<Job | null>(null)
-  const [applications, setApplications] = useState<Application[]>([])
+  const [applications, setApplications] = useState<ApplicationDTO[]>([])
   const [isLoadingApplications, setIsLoadingApplications] = useState(false)
   const [applicationsError, setApplicationsError] = useState<string | null>(null)
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null)
@@ -103,32 +105,30 @@ export function FarmerJobsList() {
     return new Intl.DateTimeFormat("vi-VN").format(date)
   }
 
-  const normalizeStatus = (status?: string, startDate?: string) => {
-    const normalized = (status ?? "").toLowerCase()
-
-    // If job start date has reached or passed today, it's considered past deadline/completed
-    if (startDate) {
+  const normalizeStatus = (statusId?: JobPostStatus, startDate?: string) => {
+    if (statusId === JobPostStatus.Published && startDate) {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const jobStart = new Date(startDate)
-      if (jobStart <= today) {
+      if (jobStart < today) {
         return "passed"
       }
     }
 
-    if (["open", "active", "published", "recruiting"].includes(normalized)) {
-      return "active"
+    switch (statusId) {
+      case JobPostStatus.Published:
+        return "active"
+      case JobPostStatus.Closed:
+        return "filled"
+      case JobPostStatus.InProgress:
+        return "in-progress"
+      case JobPostStatus.Completed:
+        return "completed"
+      case JobPostStatus.Cancelled:
+        return "cancelled"
+      default:
+        return "active"
     }
-
-    if (["filled", "full"].includes(normalized)) {
-      return "filled"
-    }
-
-    if (["completed", "closed", "done"].includes(normalized)) {
-      return "completed"
-    }
-
-    return "active"
   }
 
   // Fetch categories on mount
@@ -271,7 +271,7 @@ export function FarmerJobsList() {
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(searchQuery.toLowerCase()))
 
-      const status = normalizeStatus(job.status, job.startDate)
+      const status = normalizeStatus(job.statusId, job.startDate)
       const matchesTab =
         activeTab === "all" ||
         (activeTab === "active" && status === "active") ||
@@ -313,12 +313,12 @@ export function FarmerJobsList() {
     }
   }
 
-  const getApplicationStatusBadge = (status: Application["status"]) => {
-    if (status === "approved") {
+  const getApplicationStatusBadge = (statusId: number) => {
+    if (statusId === 2) { // Approved/Accepted
       return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Đã duyệt</Badge>
     }
 
-    if (status === "rejected") {
+    if (statusId === 3) { // Rejected
       return <Badge variant="destructive" className="bg-rose-100 text-rose-800 border-rose-200">Từ chối</Badge>
     }
 
@@ -333,17 +333,13 @@ export function FarmerJobsList() {
     setApplications([])
 
     try {
-      const response = await jobApplicationService.getJobApplicationsByPost({
-        jobId: job.id,
+      const response = await jobApplicationService.getJobApplicationsByPost(job.id, {
         includeAll: true,
       })
 
-      const payload = response.data as PaginatedResponse<Application> | Application[] | { data?: Application[] }
-
-      if (Array.isArray(payload)) {
-        setApplications(payload)
-      } else if (Array.isArray(payload?.data)) {
-        setApplications(payload.data)
+      const paginatedData = response.data
+      if (Array.isArray(paginatedData.data)) {
+        setApplications(paginatedData.data)
       } else {
         setApplications([])
       }
@@ -421,7 +417,8 @@ export function FarmerJobsList() {
                 <SelectItem value="active">Đang tuyển</SelectItem>
                 <SelectItem value="filled">Đã đủ / Full</SelectItem>
                 <SelectItem value="completed">Đã xong</SelectItem>
-                <SelectItem value="passed">Quá hạn</SelectItem>
+                {/* <SelectItem value="passed">Quá hạn</SelectItem> */}
+                <SelectItem value="cancelled">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -628,7 +625,7 @@ export function FarmerJobsList() {
                   <div className="flex flex-wrap items-start gap-3 justify-between">
                     <div className="flex flex-wrap items-center gap-3 flex-1">
                       <h3 className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer line-clamp-1" title={job.title}>{job.title}</h3>
-                      {getStatusBadge(normalizeStatus(job.status, job.startDate))}
+                      {getStatusBadge(normalizeStatus(job.statusId, job.startDate))}
                     </div>
                     {viewMode === "grid" && (
                       <div className="flex items-center gap-1 shrink-0 bg-slate-50 dark:bg-slate-900 rounded-md p-1 border">
@@ -688,7 +685,7 @@ export function FarmerJobsList() {
                     </div>
                   </div>
 
-                  {normalizeStatus(job.status, job.startDate) !== "completed" && (
+                  {normalizeStatus(job.statusId, job.startDate) !== "completed" && (
                     <div className={`max-w-md bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 mt-2 ${viewMode === "grid" ? "w-full" : ""}`}>
                       <div className="mb-2 flex items-center justify-between text-xs font-medium">
                         <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Tiến độ</span>
@@ -798,6 +795,61 @@ export function FarmerJobsList() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={isApplicationsDialogOpen} onOpenChange={setIsApplicationsDialogOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Danh sách ứng viên</DialogTitle>
+            <DialogDescription>
+              {selectedJobForApplications ? `Ứng viên cho: ${selectedJobForApplications.title}` : "Danh sách ứng viên"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto pr-2 py-2">
+            {isLoadingApplications ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-agro-green mb-2" />
+                <p className="text-sm text-muted-foreground">Đang tải ứng viên...</p>
+              </div>
+            ) : applicationsError ? (
+              <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-center border border-destructive/20">
+                {applicationsError}
+              </div>
+            ) : applications.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed">
+                <Inbox className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Chưa có ứng viên nào ứng tuyển.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {applications.map((app) => (
+                  <div key={app.id} className="flex items-center justify-between p-4 rounded-xl border bg-card hover:shadow-sm transition-all">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-10 w-10 border shadow-xs">
+                        <AvatarImage src={app.worker?.avatarUrl || "/placeholder.svg"} className="object-cover" />
+                        <AvatarFallback className="bg-agro-green/10 text-agro-green">
+                          {app.worker?.fullName?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-sm">{app.worker?.fullName || "Ứng viên"}</p>
+                        <p className="text-xs text-muted-foreground">{app.worker?.phoneNumber || "Không có SĐT"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getApplicationStatusBadge(app.statusId)}
+                      <Button variant="ghost" size="sm" asChild className="text-agro-green hover:text-agro-green hover:bg-agro-green/10">
+                        <Link href={`/farmer/applications?jobId=${selectedJobForApplications?.id}`}>
+                          Xem chi tiết
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

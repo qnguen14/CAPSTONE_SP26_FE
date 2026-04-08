@@ -4,6 +4,7 @@ import type {
     ApiResponse,
     JobDetail,
     ApproveJobDetailRequest,
+    PaginatedResponse,
 } from '@/libs/types';
 
 export const jobDetailsService = {
@@ -18,8 +19,8 @@ export const jobDetailsService = {
         return response.data;
     },
 
-    getJobDetailsByPost: async (id: string): Promise<ApiResponse<JobDetail[]>> => {
-        const response = await axiosInstance.get(API_ENDPOINTS.JOBS.JOB_DETAILS_BY_POST(id));
+    getJobDetailsByPost: async (id: string, params: { page: number, limit: number }): Promise<ApiResponse<PaginatedResponse<JobDetail>>> => {
+        const response = await axiosInstance.get(API_ENDPOINTS.JOBS.JOB_DETAILS_BY_POST(id), { params });
         return response.data;
     },
 
