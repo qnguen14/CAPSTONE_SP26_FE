@@ -341,27 +341,32 @@ export default function FarmerDashboard() {
                       ))
                     )}
 
-                    {applicationsTotalPages > 1 && (
+                    {(applicationsTotalPages > 1 || pendingApplications.length > 0) && (
                       <div className="flex items-center justify-between pt-4 border-t mt-4">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setApplicationsPage(prev => Math.max(1, prev - 1))}
                           disabled={applicationsPage === 1 || isLoadingApplications}
-                          className="h-8"
+                          className="h-8 hover:bg-agro-green/5 transition-all"
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
                           Trước
                         </Button>
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {applicationsPage} / {applicationsTotalPages}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">
+                            {applicationsPage}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            / {applicationsTotalPages}
+                          </span>
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setApplicationsPage(prev => Math.min(applicationsTotalPages, prev + 1))}
-                          disabled={applicationsPage === applicationsTotalPages || isLoadingApplications}
-                          className="h-8"
+                          disabled={applicationsPage === applicationsTotalPages || applicationsTotalPages === 0 || isLoadingApplications}
+                          className="h-8 hover:bg-agro-green/5 transition-all"
                         >
                           Sau
                           <ChevronRight className="h-4 w-4 ml-1" />

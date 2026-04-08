@@ -9,3 +9,7 @@ export { skillService } from './skill.service';
 export { jobCategoryService } from './job-category.service';
 export { notificationService } from './notifications.service';
 export { jobDetailsService } from './jobDetails.service';
+export { jobService } from './jobs.service';
+export { jobApplicationService } from './jobApplication.service';
+export { PaymentService } from './payment.service';
+export { WalletService } from './wallet.service';
