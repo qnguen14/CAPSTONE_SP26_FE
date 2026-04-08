@@ -27,6 +27,8 @@ import {
   Loader2,
   Home,
   PersonStandingIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { farmerService, authService, notificationService } from "@/libs/api/services"
@@ -48,23 +50,30 @@ export default function FarmerLayout({
   const [isProfileMissing, setIsProfileMissing] = useState(false);
   const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifTotalPages, setNotifTotalPages] = useState(1);
+  const NOTIF_PAGE_SIZE = 4;
   const notifRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await notificationService.getAll({ pageNumber: 1, pageSize: 99 });
-      // res is ApiResponse. res.data can be NotificationDTO[] or PaginatedResponse<NotificationDTO>
+      const res = await notificationService.getAll({ pageNumber: notifPage, pageSize: NOTIF_PAGE_SIZE });
       const payload = res.data;
-      const data = Array.isArray(payload) ? payload : (payload as any)?.data ?? [];
-
-      setNotifications(Array.isArray(data) ? data : []);
+      
+      if (Array.isArray(payload)) {
+        setNotifications(payload);
+        setNotifTotalPages(1);
+      } else {
+        const paginated = payload as any;
+        setNotifications(paginated?.data ?? []);
+        setNotifTotalPages(paginated?.pagination?.totalPages || 1);
+      }
     } catch {
-      // silently ignore notification fetch errors
-      setNotifications([]); // Ensure state is an array on error
+      setNotifications([]);
     }
-  }, []);
+  }, [notifPage]);
 
   const handleMarkRead = async (id: string) => {
     try {
@@ -270,15 +279,39 @@ export default function FarmerLayout({
                 {/* Notification Dropdown Panel */}
                 {notifOpen && (
                   <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-border rounded-xl shadow-xl z-50 overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b">
-                      <span className="font-semibold text-sm">Thông báo</span>
+                    <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-sm text-agro-green">Thông báo</span>
+                        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border rounded-md px-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 hover:bg-agro-green/10"
+                            onClick={() => setNotifPage((p) => Math.max(1, p - 1))}
+                            disabled={notifPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-[10px] font-bold min-w-[32px] text-center">
+                            {notifPage}/{notifTotalPages}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 hover:bg-agro-green/10"
+                            onClick={() => setNotifPage((p) => Math.min(notifTotalPages, p + 1))}
+                            disabled={notifPage === notifTotalPages || notifTotalPages === 0}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-xs text-agro-green hover:underline font-medium"
+                          className="text-[10px] text-agro-green hover:text-agro-green-dark hover:underline font-bold"
                         >
-                          Đánh dấu tất cả đã đọc
+                          Đọc tất cả
                         </button>
                       )}
                     </div>

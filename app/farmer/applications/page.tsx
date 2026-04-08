@@ -50,6 +50,8 @@ import type {
 } from "@/libs/types"
 import { jobService } from "@/libs/api/services/jobs.service"
 import { jobApplicationService } from "@/libs/api/services/jobApplication.service"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Image from "next/image"
 
 const APP_STATUS = {
   pending: 1,
@@ -240,17 +242,20 @@ export default function ApplicationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Quản lý ứng tuyển</h1>
-          <p className="text-muted-foreground">Xem chi tiết hồ sơ và phản hồi ứng viên theo từng bài đăng</p>
+      <div className="relative overflow-hidden rounded-2xl border bg-linear-to-r from-emerald-50 via-teal-50 to-cyan-50 p-5 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20">
+        <div className="pointer-events-none absolute -top-12 right-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-700/20" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Quản lý ứng viên</h1>
+            <p className="text-muted-foreground">Quản lý và theo dõi ứng viên theo từng bài đăng</p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/farmer/jobs">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Về danh sách bài đăng
+            </Link>
+          </Button>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/farmer/jobs">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Về danh sách bài đăng
-          </Link>
-        </Button>
       </div>
 
       <Card>
@@ -363,26 +368,37 @@ export default function ApplicationsPage() {
             <Card key={application.id}>
               <CardContent className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">{application.worker?.fullName || "Ứng viên"}</p>
-                      {statusBadge(application.statusId)}
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-16 w-16 shrink-0 border-2 border-background shadow-sm hover:scale-105 transition-transform">
+                      <AvatarImage src={application.worker?.avatarUrl || "/placeholder.svg"} className="object-cover" />
+                      <AvatarFallback className="bg-agro-green/10 text-agro-green">
+                        <Image src="/placeholder.svg" alt="placeholder" width={48} height={48} className="object-cover" />
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-base">{application.worker?.fullName || "Ứng viên"}</p>
+                        {statusBadge(application.statusId)}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5" />
+                          {application.worker?.phoneNumber || "-"}
+                        </p>
+
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span className="truncate">{application.worker?.primaryLocation || application.locationName || "Không có vị trí"}</span>
+                        </p>
+
+                        <p className="text-xs text-muted-foreground flex items-center gap-2 col-span-1 sm:col-span-2 mt-1">
+                          <CalendarDays className="h-3 w-3" />
+                          Nộp lúc: {formatDateTime(application.appliedAt)}
+                        </p>
+                      </div>
                     </div>
-
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      {application.worker?.phoneNumber || "-"}
-                    </p>
-
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {application.worker?.primaryLocation || application.locationName || "Không có vị trí"}
-                    </p>
-
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4" />
-                      Nộp lúc: {formatDateTime(application.appliedAt)}
-                    </p>
                   </div>
 
                   <div className="flex items-center gap-2">
