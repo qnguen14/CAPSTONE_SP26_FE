@@ -51,7 +51,7 @@ export function ChatInterface({
   const currentConversation = conversations.find((c) => c.id === currentConversationId);
 
   const { user } = useAuth();
-  const myUserId = user?.id;
+  const myUserId = user?.userId;
 
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -64,8 +64,6 @@ export function ChatInterface({
   }, [myUserId]);
 
   const hubBaseUrl = useMemo(() => {
-    // API_CONFIG.BASE_URL is like: http://localhost:5057/api/v1
-    // Hub endpoint is: http://localhost:5057/hubs/chat
     return API_CONFIG.BASE_URL.replace(/\/api\/v1\/?$/, "");
   }, []);
 
@@ -96,7 +94,22 @@ export function ChatInterface({
         transport: HttpTransportType.WebSockets,
       })
       .withAutomaticReconnect()
-      .configureLogging(LogLevel.Information)
+      .configureLogging({
+        log: (logLevel, message) => {
+          // Suppress the internal console.error when React Strict Mode aborts negotiation
+          if (logLevel === LogLevel.Error && message.includes("stopped during negotiation")) return;
+
+          if (logLevel >= LogLevel.Information) {
+            if (logLevel === LogLevel.Error || logLevel === LogLevel.Critical) {
+              console.error(message);
+            } else if (logLevel === LogLevel.Warning) {
+              console.warn(message);
+            } else {
+              console.log(message);
+            }
+          }
+        }
+      })
       .build();
 
     connection.on("NewMessage", (incoming: any) => {
@@ -145,6 +158,8 @@ export function ChatInterface({
           limit: 100,
         });
 
+        console.log(res)
+
         const payload = res.data; // ApiResponse.data => PaginatedResponse<Message>
         const apiMessages = payload?.data ?? [];
 
@@ -169,15 +184,33 @@ export function ChatInterface({
 
   // Start SignalR connection so the UI can receive NewMessage events.
   useEffect(() => {
-    ensureConnectionStarted().catch((e) => console.error("SignalR connect failed:", e));
+    ensureConnectionStarted().catch((e) => {
+      // In React 18 Strict Mode, components mount, unmount, and remount instantly in development.
+      // This causes connection.stop() to be called while start() is still negotiating, throwing this error.
+      // We can safely ignore it, as the remounted effect will successfully connect.
+      if (e.name === "AbortError" || e.message?.includes("stopped during negotiation")) {
+        console.log("SignalR: Connection stopped due to component unmount (React Strict Mode behavior).");
+        return;
+      }
+      console.error("SignalR connect failed:", e);
+    });
 
     return () => {
-      connectionRef.current?.stop().catch(() => { });
-      connectionRef.current = null;
+      if (connectionRef.current) {
+        connectionRef.current.stop().catch(() => { });
+        connectionRef.current = null;
+      }
     };
     // hubBaseUrl is stable (memoized). ensureConnectionStarted uses connectionRef + localStorage.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hubBaseUrl]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Auto-scroll to the bottom when new messages are added
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSendMessage = async () => {
     const content = messageInput.trim();
@@ -185,20 +218,32 @@ export function ChatInterface({
     if (!currentConversation?.userId) return;
 
     const receiverId = currentConversation.userId;
+    const tempTempContent = content;
+
+    // Clear input instantly for UI responsiveness
+    setMessageInput("");
 
     try {
-      const connection = await ensureConnectionStarted();
-      await connection.invoke("SendMessage", receiverId, content);
+      // In professional apps, it's safer to POST messages over strict HTTP to guarantee the DB entity 
+      // is completely returned with its real ID, while WebSockets handles strictly *incoming* broadcasts.
+      const res = await commonService.sendMessage(receiverId, tempTempContent);
+
+      if (res.data) {
+        setMessages((prev) => {
+          // Check if SignalR already added it somehow to prevent duplication
+          if (prev.some(m => m.id === res.data.id)) return prev;
+          return [...prev, res.data];
+        });
+      }
     } catch (e) {
-      // Fallback to REST if SignalR fails (still creates the message on server).
-      await commonService.sendMessage(receiverId, content);
-    } finally {
-      setMessageInput("");
+      console.error("Failed to send message:", e);
+      // Optionally put the text back if it fails
+      setMessageInput(tempTempContent);
     }
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-white rounded-lg border shadow-sm overflow-hidden">
+    <div className="flex w-full h-full bg-white border-0 shadow-none overflow-hidden">
       {/* Conversations List */}
       <div className="w-80 border-r flex flex-col">
         {/* Search */}
@@ -302,12 +347,12 @@ export function ChatInterface({
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.map((message) => {
-                const isMine = !!myUserId && message.senderId === myUserId;
+                const isMine = !!myUserId && message.senderId.toLowerCase() === myUserId.toLowerCase();
                 return (
                   <div
                     key={message.id}
                     className={cn(
-                      "flex",
+                      "flex block",
                       isMine ? "justify-end" : "justify-start"
                     )}
                   >
@@ -334,6 +379,7 @@ export function ChatInterface({
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 

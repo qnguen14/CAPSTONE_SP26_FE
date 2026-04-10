@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, InfoIcon, MailIcon, MapPin, Play, RotateCw, Star, Users, XCircle } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, InfoIcon, MailIcon, MapPin, MessageSquare, Play, RotateCw, Star, Users, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -43,8 +43,10 @@ import { JobStatusChart } from "@/components/farmer/dashboard-charts"
 
 export default function FarmerJobDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const jobId = Array.isArray(params?.id) ? params.id[0] : params?.id
 
+  const [applicationFilter, setApplicationFilter] = useState<"all" | "approved" | "cancelled">("all")
   const [job, setJob] = useState<Job | null>(null)
   const [applications, setApplications] = useState<ApplicationDTO[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -755,6 +757,27 @@ export default function FarmerJobDetailPage() {
                   </Button>
                 </CardHeader>
                 <CardContent>
+                  <div className="flex bg-muted p-1 rounded-lg mb-4 text-center max-w-sm mx-auto sm:max-w-none">
+                    <button
+                      onClick={() => setApplicationFilter("all")}
+                      className={cn("flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all", applicationFilter === "all" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      onClick={() => setApplicationFilter("approved")}
+                      className={cn("flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all", applicationFilter === "approved" ? "bg-background shadow-sm text-foreground text-emerald-600" : "text-muted-foreground hover:text-foreground")}
+                    >
+                      Đã duyệt
+                    </button>
+                    <button
+                      onClick={() => setApplicationFilter("cancelled")}
+                      className={cn("flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all", applicationFilter === "cancelled" ? "bg-background shadow-sm text-foreground text-rose-600" : "text-muted-foreground hover:text-foreground")}
+                    >
+                      Đã hủy/từ chối
+                    </button>
+                  </div>
+
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
                     {isLoadingApplications ? (
                       <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -778,7 +801,13 @@ export default function FarmerJobDetailPage() {
                       </div>
                     ) : null}
 
-                    {applications.map((application) => (
+                    {applications
+                      .filter((app) => {
+                         if (applicationFilter === "approved") return app.statusId === APP_STATUS.accepted
+                         if (applicationFilter === "cancelled") return app.statusId === APP_STATUS.cancelled || app.statusId === APP_STATUS.rejected
+                         return true
+                      })
+                      .map((application) => (
                       <div
                         key={application.id}
                         className="group relative flex flex-col gap-3 rounded-xl border border-muted bg-muted/30 p-4 hover:border-agro-green/30 hover:bg-muted/50 transition-all duration-300"
@@ -830,6 +859,17 @@ export default function FarmerJobDetailPage() {
                               >
                                 <MailIcon className="mr-1.5 h-3.5 w-3.5" />
                                 Phản hồi
+                              </Button>
+                            )}
+                            {application.statusId === APP_STATUS.accepted && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all"
+                                onClick={() => router.push(`/farmer/messages/${application.worker?.userId}`)}
+                              >
+                                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                                Nhắn tin
                               </Button>
                             )}
                           </div>

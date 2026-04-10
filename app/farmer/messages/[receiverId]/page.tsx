@@ -1,46 +1,48 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ChatInterface } from "@/components/chat/chat-interface";
 
-export default function FarmerMessageConversationPage({
-  params,
-}: {
-  params: { receiverId: string };
-}) {
+export default function FarmerMessageConversationPage() {
   const router = useRouter();
-  const receiverId = params.receiverId;
+  const params = useParams<{ receiverId: string }>();
+  const receiverId = params?.receiverId || "";
+
+  // Ideally, fetch the user's details by receiverId here.
+  // Using a fallback for now.
+  const displayId = receiverId.length > 8 ? receiverId.substring(0, 8).toUpperCase() : receiverId;
 
   const conversations = useMemo(
     () => [
       {
         id: receiverId,
         userId: receiverId,
-        userName: receiverId,
+        userName: `Người dùng ${displayId}`,
         userAvatar: "/placeholder.svg",
-        lastMessage: "",
-        lastMessageTime: "",
+        lastMessage: "Bấm vào để xem tin nhắn",
+        lastMessageTime: "vừa xong",
         unreadCount: 0,
-        online: false,
+        online: true,
       },
     ],
-    [receiverId]
+    [receiverId, displayId]
   );
 
   return (
-    <div className="p-4 lg:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Tin nhắn</h1>
-        <p className="text-muted-foreground">Trao đổi trực tiếp với người dùng</p>
+    <div className="h-[calc(100vh-6rem)] p-4 lg:p-6 flex flex-col gap-4 animate-in fade-in duration-500">
+      <div className="shrink-0 space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Tin nhắn</h1>
+        <p className="text-sm text-muted-foreground">Trao đổi trực tiếp với người dùng và quản lý cập nhật công việc</p>
       </div>
 
-      <ChatInterface
-        conversations={conversations}
-        currentConversationId={receiverId}
-        onConversationSelect={(id) => router.push(`/farmer/messages/${id}`)}
-      />
+      <div className="flex-1 min-h-0 bg-white dark:bg-zinc-900 border rounded-2xl shadow-sm overflow-hidden">
+        <ChatInterface
+          conversations={conversations}
+          currentConversationId={receiverId}
+          onConversationSelect={(id) => router.push(`/farmer/messages/${id}`)}
+        />
+      </div>
     </div>
   );
 }
-
