@@ -11,7 +11,6 @@ import {
   HubConnection,
   HubConnectionBuilder,
   HubConnectionState,
-  HttpTransportType,
   LogLevel,
 } from "@microsoft/signalr";
 import { commonService } from "@/libs/api/services";
@@ -172,8 +171,9 @@ export function ChatInterface({ receiver }: ChatInterfaceProps) {
         .withUrl(hubUrl, {
           accessTokenFactory: () =>
             localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ?? "",
-          transport: HttpTransportType.WebSockets,
-          skipNegotiation: true,
+          // Allow SignalR to negotiate the best transport:
+          // WebSockets → Server-Sent Events → Long Polling
+          // This ensures real-time works even through ngrok or restrictive networks
         })
         .withAutomaticReconnect()
         .configureLogging({
