@@ -1,4 +1,5 @@
 import { ApplicationWorkerDTO } from "./application.types";
+import { FarmerProfile } from "./farmer.types";
 
 export interface JobAttachment {
     id: string;
@@ -16,6 +17,7 @@ export interface JobDetail {
     jobPostId: string;
     workerId: string;
     worker: ApplicationWorkerDTO;
+    farmer: FarmerProfile;
     statusId: JobStatus;
     workDate: string;
     workerDescription: string;

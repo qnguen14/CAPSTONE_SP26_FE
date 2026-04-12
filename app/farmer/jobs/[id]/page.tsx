@@ -62,7 +62,7 @@ function JobReviews({ jobId }: { jobId: string }) {
           setReviews(filtered);
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [user?.userId, jobId]);
 
@@ -109,7 +109,7 @@ function WorkerAverageRating({ userId, fallback }: { userId?: string, fallback?:
           setRating(res.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [userId]);
 
   const displayRating = rating !== null ? rating : fallback;
@@ -425,7 +425,7 @@ export default function FarmerJobDetailPage() {
       setIsJobDetailDialogOpen(true)
       setIsLoadingSingleJobDetail(true)
       const response = await jobDetailsService.getJobDetail(detailId)
-      console.log(response);
+      console.log(response)
       setSelectedJobDetail(response.data)
       setApprovalFeedback(response.data.farmerFeedback || "")
       setApprovalPercent(response.data.farmerApprovedPercent || 100)
@@ -461,9 +461,9 @@ export default function FarmerJobDetailPage() {
         const endDateObj = new Date(job.endDate)
         const workDateObj = new Date(selectedJobDetail.workDate)
         const isSameDay = endDateObj.getFullYear() === workDateObj.getFullYear() &&
-                          endDateObj.getMonth() === workDateObj.getMonth() &&
-                          endDateObj.getDate() === workDateObj.getDate()
-        
+          endDateObj.getMonth() === workDateObj.getMonth() &&
+          endDateObj.getDate() === workDateObj.getDate()
+
         if (isSameDay) {
           await handleUpdateStatus(JOB_POST_STATUS.Completed)
         }
@@ -810,7 +810,7 @@ export default function FarmerJobDetailPage() {
                     </CardContent>
                   </Card>
                 </div>
-                
+
                 {/* Job Reviews Section */}
                 {jobId && <JobReviews jobId={jobId} />}
               </div>
@@ -887,83 +887,83 @@ export default function FarmerJobDetailPage() {
 
                     {applications
                       .filter((app) => {
-                         if (applicationFilter === "approved") return app.statusId === APP_STATUS.accepted
-                         if (applicationFilter === "cancelled") return app.statusId === APP_STATUS.cancelled || app.statusId === APP_STATUS.rejected
-                         return true
+                        if (applicationFilter === "approved") return app.statusId === APP_STATUS.accepted
+                        if (applicationFilter === "cancelled") return app.statusId === APP_STATUS.cancelled || app.statusId === APP_STATUS.rejected
+                        return true
                       })
                       .map((application) => (
-                      <div
-                        key={application.id}
-                        className="group relative flex flex-col gap-3 rounded-xl border border-muted bg-muted/30 p-4 hover:border-agro-green/30 hover:bg-muted/50 transition-all duration-300"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Avatar className="h-12 w-12 border-2 border-background shadow-sm hover:scale-105 transition-transform">
-                              <AvatarImage src={application.worker?.avatarUrl || "/placeholder.svg"} className="object-cover" />
-                              <AvatarFallback className="bg-agro-green/10 text-agro-green">
-                                <Image src="/placeholder.svg" alt="placeholder" width={48} height={48} className="object-cover" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <p className="font-bold text-foreground truncate">{application.worker?.fullName || "Ứng viên"}</p>
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                                <WorkerAverageRating userId={application.worker?.userId} fallback={application.worker?.averageRating} />
-                                <span className="opacity-40">•</span>
-                                <span>{application.worker?.primaryLocation || "TP.HCM"}</span>
+                        <div
+                          key={application.id}
+                          className="group relative flex flex-col gap-3 rounded-xl border border-muted bg-muted/30 p-4 hover:border-agro-green/30 hover:bg-muted/50 transition-all duration-300"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar className="h-12 w-12 border-2 border-background shadow-sm hover:scale-105 transition-transform">
+                                <AvatarImage src={application.worker?.avatarUrl || "/placeholder.svg"} className="object-cover" />
+                                <AvatarFallback className="bg-agro-green/10 text-agro-green">
+                                  <Image src="/placeholder.svg" alt="placeholder" width={48} height={48} className="object-cover" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="font-bold text-foreground truncate">{application.worker?.fullName || "Ứng viên"}</p>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                  <WorkerAverageRating userId={application.worker?.userId} fallback={application.worker?.averageRating} />
+                                  <span className="opacity-40">•</span>
+                                  <span>{application.worker?.primaryLocation || "TP.HCM"}</span>
+                                </div>
                               </div>
                             </div>
+                            <div className="shrink-0">
+                              {statusBadge(application.statusId)}
+                            </div>
                           </div>
-                          <div className="shrink-0">
-                            {statusBadge(application.statusId)}
-                          </div>
-                        </div>
 
-                        <div className="mt-1 flex items-center justify-between gap-2 border-t border-muted/50 pt-3">
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-tight">
-                            <Clock className="h-3 w-3" />
-                            {formatDistanceToNow(new Date(application.appliedAt), { addSuffix: true, locale: vi })}
-                          </div>
-                          <div className="flex gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 rounded-lg hover:bg-agro-green/10 text-agro-green"
-                              onClick={() => void openApplicationDetail(application.id)}
-                            >
-                              <InfoIcon className="h-4 w-4" />
-                            </Button>
-                            {application.statusId === APP_STATUS.pending && (
+                          <div className="mt-1 flex items-center justify-between gap-2 border-t border-muted/50 pt-3">
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-tight">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(application.appliedAt), { addSuffix: true, locale: vi })}
+                            </div>
+                            <div className="flex gap-1.5">
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-8 px-3 rounded-lg bg-agro-green hover:bg-agro-green-dark text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all"
-                                onClick={() => void openApplicationRespond(application.id)}
+                                variant="ghost"
+                                className="h-8 w-8 p-0 rounded-lg hover:bg-agro-green/10 text-agro-green"
+                                onClick={() => void openApplicationDetail(application.id)}
                               >
-                                <MailIcon className="mr-1.5 h-3.5 w-3.5" />
-                                Phản hồi
+                                <InfoIcon className="h-4 w-4" />
                               </Button>
-                            )}
-                            {application.statusId === APP_STATUS.accepted && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all"
-                                onClick={() => {
-                                  const query = new URLSearchParams();
-                                  if (application.worker?.fullName) query.set("name", application.worker.fullName);
-                                  if (application.worker?.avatarUrl) query.set("avatarUrl", application.worker.avatarUrl);
-                                  router.push(`/farmer/messages/${application.worker?.userId}?${query.toString()}`);
-                                }}
-                              >
-                                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-                                Nhắn tin
-                              </Button>
-                            )}
+                              {application.statusId === APP_STATUS.pending && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 px-3 rounded-lg bg-agro-green hover:bg-agro-green-dark text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all"
+                                  onClick={() => void openApplicationRespond(application.id)}
+                                >
+                                  <MailIcon className="mr-1.5 h-3.5 w-3.5" />
+                                  Phản hồi
+                                </Button>
+                              )}
+                              {application.statusId === APP_STATUS.accepted && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all"
+                                  onClick={() => {
+                                    const query = new URLSearchParams();
+                                    if (application.worker?.fullName) query.set("name", application.worker.fullName);
+                                    if (application.worker?.avatarUrl) query.set("avatarUrl", application.worker.avatarUrl);
+                                    router.push(`/farmer/messages/${application.worker?.userId}?${query.toString()}`);
+                                  }}
+                                >
+                                  <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                                  Nhắn tin
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
 
                     {applicationsTotalPages > 1 && (
                       <div className="flex items-center justify-between pt-4 border-t mt-4">
@@ -1467,26 +1467,26 @@ export default function FarmerJobDetailPage() {
                     <Label className="text-sm font-semibold">Đính kèm từ người làm</Label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {selectedJobDetail.attachments.map(att => (
-                        <a 
-                          key={att.id} 
-                          href={att.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <a
+                          key={att.id}
+                          href={att.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="relative aspect-square border rounded-xl overflow-hidden block group"
                         >
                           {att.format && (att.format.toLowerCase() === 'mp4' || att.format.toLowerCase() === 'video' || att.format.includes('video')) ? (
-                             <video 
-                               src={att.fileUrl} 
-                               className="object-cover w-full h-full" 
-                             />
+                            <video
+                              src={att.fileUrl}
+                              className="object-cover w-full h-full"
+                            />
                           ) : (
-                             <Image 
-                               src={att.fileUrl} 
-                               alt="Đính kèm" 
-                               fill 
-                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                               className="object-cover group-hover:scale-105 transition-transform duration-300" 
-                             />
+                            <Image
+                              src={att.fileUrl}
+                              alt="Đính kèm"
+                              fill
+                              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
                             <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm transition-opacity duration-300">
