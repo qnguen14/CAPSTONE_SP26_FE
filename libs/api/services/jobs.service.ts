@@ -95,7 +95,7 @@ export const jobService = {
     },
 
     updateUrgency: async (id: string, isUrgent: boolean): Promise<ApiResponse<Job>> => {
-        const response = await axiosInstance.put(API_ENDPOINTS.JOBS.UPDATE_URGENCY(id), { isUrgent });
+        const response = await axiosInstance.put(API_ENDPOINTS.JOBS.UPDATE_URGENCY(id), null, { params: { isUrgent } });
         return response.data;
     },
 

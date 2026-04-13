@@ -265,7 +265,7 @@ export default function FarmerDashboard() {
               <Card className="shadow-sm border-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg">Danh sách</CardTitle>
-                  <Link href="/farmer/applications">
+                  <Link href="/farmer/jobs">
                     <Button variant="ghost" size="sm" className="text-agro-green">
                       Xem tất cả
                       <ChevronRight className="h-4 w-4 ml-1" />
@@ -461,20 +461,21 @@ export default function FarmerDashboard() {
                   onSelect={setDate}
                   className="rounded-md w-full"
                   modifiers={{
-                    scheduled: scheduledDates,
+                    scheduled: scheduledDates
                   }}
                   modifiersStyles={{
                     scheduled: {
                       backgroundColor: "oklch(0.55 0.15 145 / 0.2)",
                       color: "oklch(0.55 0.15 145)",
                       fontWeight: "bold",
+                      borderRadius: "0.375rem",
                     },
                   }}
                   components={{
                     DayButton: ({ day, ...props }) => (
                       <button
                         {...props}
-                        className={`${props.className} ${currentWeather ? 'cursor-pointer' : ''}`}
+                        className={`${props.className} ${currentWeather ? 'cursor-pointer' : ''} mt-3`}
                         onClick={(e) => {
                           setDate(day.date);
                           if (currentWeather) {

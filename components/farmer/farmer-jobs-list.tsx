@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Users, Clock, Banknote, MapPin, Copy, Calendar, Inbox, LayoutGrid, LayoutList, Loader2, Filter, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDownUp, XCircle } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Users, Clock, Banknote, MapPin, Copy, Calendar, Inbox, LayoutGrid, LayoutList, Loader2, Filter, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDownUp, XCircle, RefreshCw, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -74,6 +74,7 @@ export function FarmerJobsList() {
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null)
   const [jobPendingCancel, setJobPendingCancel] = useState<Job | null>(null)
   const [sortByDatesDescending, setSortByDatesDescending] = useState(true)
+  const [updatingUrgencyJobId, setUpdatingUrgencyJobId] = useState<string | null>(null)
 
   // For combo boxes
   const [categories, setCategories] = useState<JobCategory[]>([])
@@ -213,57 +214,57 @@ export function FarmerJobsList() {
     }
   }, [filterCategory, categories, skillPage])
 
-  useEffect(() => {
-    const loadJobs = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
+  const loadJobs = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
 
-        // Use getFilteredJobs if any filter parameters exist, otherwise use getJobs
-        const hasFilters = searchQuery || (filterCategory && filterCategory !== "all-categories") || (filterAddress && filterAddress !== "all-provinces") || filterSkills.length > 0
+      // Use getFilteredJobs if any filter parameters exist, otherwise use getJobs
+      const hasFilters = searchQuery || (filterCategory && filterCategory !== "all-categories") || (filterAddress && filterAddress !== "all-provinces") || filterSkills.length > 0
 
-        let response
-        if (hasFilters) {
-          response = await jobService.getFilteredJobsByFarmer({
-            title: searchQuery || undefined,
-            category: (filterCategory && filterCategory !== "all-categories") ? filterCategory : undefined,
-            address: (filterAddress && filterAddress !== "all-provinces") ? filterAddress : undefined,
-            skill: filterSkills.length > 0 ? filterSkills : undefined,
-            sortByDatesDescending,
-          })
-        } else {
-          response = await jobService.getFilteredJobsByFarmer()
-        }
-
-        const payload = response.data as Job[] | { data?: Job[]; items?: Job[] }
-
-        if (Array.isArray(payload)) {
-          setJobs(payload)
-          return
-        }
-
-        if (Array.isArray(payload?.data)) {
-          setJobs(payload.data)
-          return
-        }
-
-        if (Array.isArray(payload?.items)) {
-          setJobs(payload.items)
-          return
-        }
-
-        setJobs([])
-      } catch (fetchError) {
-        console.error(fetchError)
-        setError("Không thể tải danh sách công việc. Vui lòng thử lại.")
-        setJobs([])
-      } finally {
-        setIsLoading(false)
+      let response
+      if (hasFilters) {
+        response = await jobService.getFilteredJobsByFarmer({
+          title: searchQuery || undefined,
+          category: (filterCategory && filterCategory !== "all-categories") ? filterCategory : undefined,
+          address: (filterAddress && filterAddress !== "all-provinces") ? filterAddress : undefined,
+          skill: filterSkills.length > 0 ? filterSkills : undefined,
+          sortByDatesDescending,
+        })
+      } else {
+        response = await jobService.getFilteredJobsByFarmer()
       }
-    }
 
-    void loadJobs()
+      const payload = response.data as Job[] | { data?: Job[]; items?: Job[] }
+
+      if (Array.isArray(payload)) {
+        setJobs(payload)
+        return
+      }
+
+      if (Array.isArray(payload?.data)) {
+        setJobs(payload.data)
+        return
+      }
+
+      if (Array.isArray(payload?.items)) {
+        setJobs(payload.items)
+        return
+      }
+
+      setJobs([])
+    } catch (fetchError) {
+      console.error(fetchError)
+      setError("Không thể tải danh sách công việc. Vui lòng thử lại.")
+      setJobs([])
+    } finally {
+      setIsLoading(false)
+    }
   }, [searchQuery, filterCategory, filterAddress, filterSkills, sortByDatesDescending])
+
+  useEffect(() => {
+    void loadJobs()
+  }, [loadJobs])
 
   const filteredJobs = useMemo(() => {
     const filtered = jobs.filter((job) => {
@@ -358,19 +359,30 @@ export function FarmerJobsList() {
     try {
       setCancellingJobId(job.id)
       await jobService.cancelJob(job.id)
-      // Instead of removing from list, we can just update its status if the list logic handles it
-      // but for now, let's keep it consistent with the previous behavior and maybe just refresh
-      setJobs((currentJobs) =>
-        currentJobs.map((currentJob) =>
-          currentJob.id === job.id ? { ...currentJob, status: "Cancelled" } : currentJob
-        )
-      )
       setJobPendingCancel(null)
+      // Auto-reload to get the latest status from the server
+      await loadJobs()
     } catch (cancelError) {
       console.error(cancelError)
       setError("Không thể hủy bài đăng. Vui lòng thử lại.")
     } finally {
       setCancellingJobId(null)
+    }
+  }
+
+  const handleToggleUrgency = async (job: Job) => {
+    try {
+      setUpdatingUrgencyJobId(job.id)
+      const response = await jobService.updateUrgency(job.id, !Boolean(job.isUrgent))
+      console.log(response)
+      await loadJobs()
+
+
+    } catch (urgencyError) {
+      console.error(urgencyError)
+      setError("Không thể cập nhật độ khẩn cấp. Vui lòng thử lại.")
+    } finally {
+      setUpdatingUrgencyJobId(null)
     }
   }
 
@@ -384,12 +396,14 @@ export function FarmerJobsList() {
             <h1 className="text-2xl font-bold text-foreground">Tin tuyển dụng</h1>
             <p className="text-muted-foreground">Quản lý các tin tuyển dụng và theo dõi ứng viên theo từng bài đăng</p>
           </div>
-          <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-            <Link href="/farmer/create-job">
-              <Plus className="mr-2 h-4 w-4" />
-              Đăng tin mới
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+              <Link href="/farmer/create-job">
+                <Plus className="mr-2 h-4 w-4" />
+                Đăng tin mới
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
       <div className="flex flex-col sm:flex-row items-center gap-3 bg-card p-3 rounded-xl border shadow-sm">
@@ -463,6 +477,14 @@ export function FarmerJobsList() {
               <LayoutList className="h-4 w-4" />
             </Button>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => void loadJobs()}
+            disabled={isLoading}
+            className="bg-white/70 dark:bg-slate-900/70 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
         </div>
       </div>
 
@@ -630,6 +652,12 @@ export function FarmerJobsList() {
                     <div className="flex flex-wrap items-center gap-3 flex-1">
                       <h3 className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer line-clamp-1" title={job.title}>{job.title}</h3>
                       {getStatusBadge(normalizeStatus(job.statusId, job.startDate))}
+                      {job.isUrgent && (
+                        <Badge className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-400 gap-1">
+                          <Zap className="h-3 w-3" />
+                          Khẩn cấp
+                        </Badge>
+                      )}
                     </div>
                     {viewMode === "grid" && (
                       <div className="flex items-center gap-1 shrink-0 bg-slate-50 dark:bg-slate-900 rounded-md p-1 border">
@@ -652,10 +680,20 @@ export function FarmerJobsList() {
                                 Chỉnh sửa
                               </Link>
                             </DropdownMenuItem>
-                            {/* <DropdownMenuItem className="cursor-pointer">
-                              <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
-                              Đăng lại
-                            </DropdownMenuItem> */}
+                            {Number(job.statusId) === JobPostStatus.Published && (
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() => void handleToggleUrgency(job)}
+                                disabled={updatingUrgencyJobId === job.id}
+                              >
+                                <Zap className={`mr-2 h-4 w-4 ${job.isUrgent ? "text-orange-500" : "text-muted-foreground"}`} />
+                                {updatingUrgencyJobId === job.id
+                                  ? "Đang cập nhật..."
+                                  : job.isUrgent
+                                    ? "Bỏ khẩn cấp"
+                                    : "Đánh dấu khẩn cấp"}
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive cursor-pointer"
@@ -736,6 +774,20 @@ export function FarmerJobsList() {
                           <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
                           Đăng lại
                         </DropdownMenuItem>
+                        {Number(job.statusId) === JobPostStatus.Published && (
+                          <DropdownMenuItem
+                            className="cursor-pointer"
+                            onClick={() => void handleToggleUrgency(job)}
+                            disabled={updatingUrgencyJobId === job.id}
+                          >
+                            <Zap className={`mr-2 h-4 w-4 ${job.isUrgent ? "text-orange-500" : "text-muted-foreground"}`} />
+                            {updatingUrgencyJobId === job.id
+                              ? "Đang cập nhật..."
+                              : job.isUrgent
+                                ? "Bỏ khẩn cấp"
+                                : "Đánh dấu khẩn cấp"}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive cursor-pointer"
