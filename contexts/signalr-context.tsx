@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
 } from "react";
 import {
   HubConnection,
@@ -33,11 +34,32 @@ type MessageHandler = (msg: IncomingMessage) => void;
 interface SignalRContextValue {
   /** Subscribe to incoming messages. Returns an unsubscribe fn. */
   onMessage: (handler: MessageHandler) => () => void;
+  /** Current connection status */
+  connectionStatus: "disconnected" | "connecting" | "connected" | "reconnecting";
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const SignalRContext = createContext<SignalRContextValue | null>(null);
+
+// ─── Normalise helper (pure — no closures over component state) ───────────────
+
+function normalise(raw: any): IncomingMessage | null {
+  const id: string = String(raw.id ?? raw.Id ?? "");
+  const senderId: string = String(raw.senderId ?? raw.SenderId ?? "");
+  const receiverId: string = String(raw.receiverId ?? raw.ReceiverId ?? "");
+  const content: string = String(raw.content ?? raw.Content ?? "");
+  const read: boolean =
+    raw.read !== undefined ? !!raw.read : !!raw.Read;
+  const createdAt: string =
+    raw.createdAt ?? raw.CreatedAt ?? new Date().toISOString();
+
+  if (!id || !senderId || !receiverId) {
+    console.warn("[SignalR] Dropped message – missing id/senderId/receiverId:", raw);
+    return null;
+  }
+  return { id, senderId, receiverId, content, read, createdAt };
+}
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
@@ -48,28 +70,18 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
   // Stable set of subscriber callbacks
   const handlersRef = useRef<Set<MessageHandler>>(new Set());
   const connectionRef = useRef<HubConnection | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "disconnected" | "connecting" | "connected" | "reconnecting"
+  >("disconnected");
 
   const hubBaseUrl = API_CONFIG.BASE_URL.replace(/\/api\/v1\/?$/, "");
 
-  /** Normalises the raw SignalR payload (camelCase or PascalCase) */
-  const normalise = (raw: any): IncomingMessage | null => {
-    const id: string = raw.id ?? raw.Id ?? "";
-    const senderId: string = raw.senderId ?? raw.SenderId ?? "";
-    const receiverId: string = raw.receiverId ?? raw.ReceiverId ?? "";
-    const content: string = raw.content ?? raw.Content ?? "";
-    const read: boolean =
-      raw.read !== undefined ? !!raw.read : !!raw.Read;
-    const createdAt: string =
-      raw.createdAt ?? raw.CreatedAt ?? new Date().toISOString();
-
-    if (!id || !senderId || !receiverId) return null;
-    return { id, senderId, receiverId, content, read, createdAt };
-  };
-
   /** Fan-out an incoming message to all current subscribers */
   const dispatch = useCallback((raw: any) => {
+    console.log("[SignalR] Raw incoming message:", raw);
     const msg = normalise(raw);
     if (!msg) return;
+    console.log("[SignalR] Dispatching to", handlersRef.current.size, "subscriber(s):", msg.id);
     handlersRef.current.forEach((h) => h(msg));
   }, []);
 
@@ -85,6 +97,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
         connectionRef.current &&
         connectionRef.current.state === HubConnectionState.Connected
       ) {
+        console.log("[SignalR] Reusing existing connected instance");
         connectionRef.current.off("NewMessage");
         connectionRef.current.off("ReceiveMessage");
         connectionRef.current.on("NewMessage", dispatch);
@@ -104,12 +117,14 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
       if (cancelled) return;
 
+      setConnectionStatus("connecting");
+
       const conn = new HubConnectionBuilder()
         .withUrl(`${hubBaseUrl}/hubs/chat`, {
           accessTokenFactory: () =>
             localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ?? "",
         })
-        .withAutomaticReconnect()
+        .withAutomaticReconnect([0, 1000, 2000, 5000, 10000, 30000])
         .configureLogging({
           log: (level, message) => {
             // Suppress noisy Strict-Mode teardown errors
@@ -132,8 +147,14 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       conn.on("NewMessage", dispatch);
       conn.on("ReceiveMessage", dispatch);
 
+      conn.onreconnecting(() => {
+        console.log("[SignalR] Reconnecting...");
+        setConnectionStatus("reconnecting");
+      });
+
       conn.onreconnected(() => {
         console.log("[SignalR] Reconnected — re-attaching listeners");
+        setConnectionStatus("connected");
         conn.off("NewMessage");
         conn.off("ReceiveMessage");
         conn.on("NewMessage", dispatch);
@@ -142,6 +163,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
       conn.onclose((err) => {
         if (err) console.error("[SignalR] Closed with error:", err);
+        setConnectionStatus("disconnected");
       });
 
       connectionRef.current = conn;
@@ -153,7 +175,8 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
           connectionRef.current = null;
           return;
         }
-        console.log("[SignalR] Connected (shared provider)");
+        setConnectionStatus("connected");
+        console.log("[SignalR] Connected (shared provider) for user:", myUserId);
       } catch (e: any) {
         if (
           e?.name === "AbortError" ||
@@ -162,6 +185,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
         )
           return;
         console.error("[SignalR] Connect failed:", e);
+        setConnectionStatus("disconnected");
       }
     };
 
@@ -173,6 +197,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
         connectionRef.current.stop().catch(() => {});
         connectionRef.current = null;
       }
+      setConnectionStatus("disconnected");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myUserId]);
@@ -186,7 +211,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SignalRContext.Provider value={{ onMessage }}>
+    <SignalRContext.Provider value={{ onMessage, connectionStatus }}>
       {children}
     </SignalRContext.Provider>
   );

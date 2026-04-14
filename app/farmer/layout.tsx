@@ -62,7 +62,7 @@ export default function FarmerLayout({
     try {
       const res = await notificationService.getAll({ pageNumber: notifPage, pageSize: NOTIF_PAGE_SIZE });
       const payload = res.data;
-      
+
       if (Array.isArray(payload)) {
         setNotifications(payload);
         setNotifTotalPages(1);
@@ -154,9 +154,6 @@ export default function FarmerLayout({
         // Also check if any requisite fields are missing 
         if (!response.data?.contactName && !response.data?.address) {
           setIsProfileMissing(true);
-          if (!pathname.startsWith("/farmer/setup-profile")) {
-            router.replace("/farmer/setup-profile");
-          }
         } else {
           setIsProfileMissing(false);
         }
@@ -169,11 +166,6 @@ export default function FarmerLayout({
         if (profileNotFound) {
           setIsProfileMissing(true);
           setProfile(null);
-
-          // Force users with missing profile to complete settings first.
-          if (!pathname.startsWith("/farmer/setup-profile")) {
-            router.replace("/farmer/setup-profile");
-          }
         } else {
           console.error("Failed to fetch farmer profile:", error);
         }
@@ -183,7 +175,8 @@ export default function FarmerLayout({
     };
 
     fetchProfile();
-  }, [isAuthenticated, pathname, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated && isProfileMissing && !pathname.startsWith("/farmer/setup-profile")) {
@@ -202,8 +195,10 @@ export default function FarmerLayout({
     }
   };
 
-  // Show loading state while checking authentication
-  if (isLoading || checkingProfile) {
+  // Show loading state only during initial auth check
+  // NOTE: We no longer block on checkingProfile to avoid unmounting
+  // SignalRProvider (and killing the real-time connection) on navigation.
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-agro-cream flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-agro-green" />

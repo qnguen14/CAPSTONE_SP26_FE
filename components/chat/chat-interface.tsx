@@ -32,7 +32,7 @@ export function ChatInterface({ receiver }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState("");
   const { user } = useAuth();
   const myUserId = user?.userId;
-  const { onMessage } = useSignalR();
+  const { onMessage, connectionStatus } = useSignalR();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const shouldScrollRef = useRef(false);
@@ -115,45 +115,71 @@ export function ChatInterface({ receiver }: ChatInterfaceProps) {
   }, [onMessage, handleIncomingMessage]);
 
   /* ─── Load history when receiver changes ──────────────────── */
-  useEffect(() => {
-    if (!receiver.id) return;
+  const loadMessages = useCallback(async (receiverId: string, replace = true) => {
+    try {
+      await commonService.markConversationAsRead(receiverId);
 
-    const loadMessages = async () => {
-      try {
-        await commonService.markConversationAsRead(receiver.id);
+      const res = await commonService.getMessages({
+        userId: receiverId,
+        page: 1,
+        limit: 100,
+      });
 
-        const res = await commonService.getMessages({
-          userId: receiver.id,
-          page: 1,
-          limit: 100,
-        });
+      const apiMessages: any[] = res.data?.data ?? [];
 
-        const apiMessages: any[] = res.data?.data ?? [];
+      const sorted = apiMessages
+        .map((m) => ({
+          id: String(m.id || m.Id),
+          senderId: String(m.senderId || m.SenderId),
+          receiverId: String(m.receiverId || m.ReceiverId),
+          content: String(m.content || m.Content),
+          read: !!m.read,
+          createdAt: m.createdAt || m.CreatedAt,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
 
-        const sorted = apiMessages
-          .map((m) => ({
-            id: m.id || m.Id,
-            senderId: m.senderId || m.SenderId,
-            receiverId: m.receiverId || m.ReceiverId,
-            content: m.content || m.Content,
-            read: !!m.read,
-            createdAt: m.createdAt || m.CreatedAt,
-          }))
-          .sort(
+      if (replace) {
+        shouldScrollRef.current = true;
+        setMessages(sorted);
+      } else {
+        // Merge: add only messages we don't already have
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newMsgs = sorted.filter((m) => !existingIds.has(m.id));
+          if (newMsgs.length === 0) return prev;
+          shouldScrollRef.current = true;
+          return [...prev, ...newMsgs].sort(
             (a, b) =>
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
-
-        shouldScrollRef.current = true;
-        setMessages(sorted);
-      } catch (e) {
-        console.error("Failed to load messages:", e);
-        setMessages([]);
+        });
       }
-    };
+    } catch (e) {
+      console.error("Failed to load messages:", e);
+      if (replace) setMessages([]);
+    }
+  }, []);
 
-    loadMessages();
-  }, [receiver.id]);
+  useEffect(() => {
+    if (!receiver.id) return;
+    loadMessages(receiver.id, true);
+  }, [receiver.id, loadMessages]);
+
+  /* ─── Catch up on reconnect (messages missed while offline) ── */
+  const prevStatusRef = useRef(connectionStatus);
+  useEffect(() => {
+    const wasDisconnected =
+      prevStatusRef.current !== "connected" && connectionStatus === "connected";
+    prevStatusRef.current = connectionStatus;
+
+    if (wasDisconnected && receiver.id) {
+      // Merge any messages we missed while SignalR was down
+      loadMessages(receiver.id, false);
+    }
+  }, [connectionStatus, receiver.id, loadMessages]);
 
   /* ─── Auto-scroll ─────────────────────────────────────────── */
   const messagesEndRef = useRef<HTMLDivElement>(null);
