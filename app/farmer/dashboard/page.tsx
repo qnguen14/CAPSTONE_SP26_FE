@@ -116,7 +116,10 @@ export default function FarmerDashboard() {
         page: page,
         limit: 5
       })
-      setPendingApplications(response.data.data)
+      const pendingOnly = (response.data.data || []).filter(
+        (application) => application.statusId === ApplicationStatusId.Pending
+      )
+      setPendingApplications(pendingOnly)
       setApplicationsTotalPages(response.data.pagination?.totalPages || 1)
     } catch (error) {
       console.error('Failed to fetch pending applications:', error)
