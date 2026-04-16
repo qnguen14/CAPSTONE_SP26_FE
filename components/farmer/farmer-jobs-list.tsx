@@ -52,9 +52,11 @@ import { Progress } from "@/components/ui/progress"
 import { jobService } from "@/libs/api/services/jobs.service"
 import { jobApplicationService } from "@/libs/api/services/jobApplication.service"
 
+type JobFilterTab = "all" | "draft" | "active" | "filled" | "in-progress" | "completed" | "passed" | "cancelled"
+
 export function FarmerJobsList() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("active")
+  const [activeTab, setActiveTab] = useState<JobFilterTab>("active")
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid")
   const [jobs, setJobs] = useState<Job[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -106,7 +108,7 @@ export function FarmerJobsList() {
     return new Intl.DateTimeFormat("vi-VN").format(date)
   }
 
-  const normalizeStatus = (statusId?: JobPostStatus, startDate?: string) => {
+  const normalizeStatus = (statusId?: JobPostStatus, startDate?: string): "draft" | "active" | "filled" | "in-progress" | "completed" | "passed" | "cancelled" => {
     if (statusId === JobPostStatus.Published && startDate) {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
@@ -117,6 +119,8 @@ export function FarmerJobsList() {
     }
 
     switch (statusId) {
+      case JobPostStatus.Draft:
+        return "draft"
       case JobPostStatus.Published:
         return "active"
       case JobPostStatus.Closed:
@@ -128,7 +132,7 @@ export function FarmerJobsList() {
       case JobPostStatus.Cancelled:
         return "cancelled"
       default:
-        return "active"
+        return "draft"
     }
   }
 
@@ -286,8 +290,10 @@ export function FarmerJobsList() {
     })
   }, [activeTab, jobs, searchQuery, sortByDatesDescending])
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: "draft" | "active" | "filled" | "in-progress" | "completed" | "passed" | "cancelled") => {
     switch (status) {
+      case "draft":
+        return <Badge variant="outline" className="bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800/60 dark:text-slate-300 border-slate-300">Bản nháp</Badge>
       case "active":
         return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200">Đang tuyển</Badge>
       case "filled":
@@ -386,6 +392,10 @@ export function FarmerJobsList() {
     }
   }
 
+  const handleActiveTabChange = (value: string) => {
+    setActiveTab(value as JobFilterTab)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
@@ -422,7 +432,7 @@ export function FarmerJobsList() {
         <div className="flex items-center gap-3 pl-3 sm:w-auto overflow-x-auto">
           {/* Status Select */}
           <div className="w-full sm:w-[180px] shrink-0">
-            <Select value={activeTab} onValueChange={setActiveTab}>
+            <Select value={activeTab} onValueChange={handleActiveTabChange}>
               <SelectTrigger className="h-10 font-medium bg-white dark:bg-slate-900 border-slate-200">
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
@@ -431,6 +441,7 @@ export function FarmerJobsList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả bài đăng</SelectItem>
+                {/* <SelectItem value="draft">Bản nháp</SelectItem> */}
                 <SelectItem value="active">Đang tuyển</SelectItem>
                 <SelectItem value="filled">Đã đủ / Full</SelectItem>
                 <SelectItem value="in-progress">Đang làm việc</SelectItem>

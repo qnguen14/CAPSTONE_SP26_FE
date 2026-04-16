@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Banknote, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight, User, Users } from "lucide-react"
 import { eachDayOfInterval, format, isSameDay, startOfDay } from "date-fns"
+import type { DateRange } from "react-day-picker"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -71,6 +72,11 @@ type FarmerJobFormProps = {
   jobId?: string
 }
 
+type PendingLeaveAction =
+  | { type: "route"; url: string }
+  | { type: "reload" }
+  | null
+
 const DEFAULT_FARM_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 const DEFAULT_JOB_CATEGORY_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 const JOB_TYPE_CONTRACT_ID = 1
@@ -78,14 +84,25 @@ const JOB_TYPE_DAILY_ID = 2
 const DEFAULT_STATUS_ID = JobPostStatus.Published
 const DEFAULT_IS_URGENT = false
 
-const OSM_REVERSE_URL = process.env.NEXT_PUBLIC_OSM_REVERSE_URL
-
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(value)
+
+const toDigitsOnly = (value: string) => value.replace(/\D/g, "")
+
+const formatThousandsWithDots = (value: string) => {
+  const digits = toDigitsOnly(value)
+
+  if (!digits) {
+    return ""
+  }
+
+  const normalizedDigits = digits.replace(/^0+(?=\d)/, "")
+  return normalizedDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+}
 
 const formatDateDDMMYYYY = (dateValue: string) => {
   if (!dateValue) {
@@ -186,8 +203,10 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [isLeavingPromptOpen, setIsLeavingPromptOpen] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
-  // Stores the URL to navigate to after user decides on the leaving prompt
-  const pendingNavigationUrl = useRef<string | null>(null)
+  // Stores pending action after user confirms on leaving prompt
+  const pendingLeaveActionRef = useRef<PendingLeaveAction>(null)
+  // Allows browser-level exit after user confirms leaving
+  const allowBrowserExitRef = useRef(false)
   // Mirror of isDirty as a ref so callbacks always read the latest value without stale closures
   const isDirtyRef = useRef(false)
 
@@ -204,6 +223,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [newRequirement, setNewRequirement] = useState("")
 
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([])
+  const [skillLabelsById, setSkillLabelsById] = useState<Record<string, string>>({})
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([])
   const [isLoadingSkills, setIsLoadingSkills] = useState(true)
   const [skillPage, setSkillPage] = useState(1)
@@ -216,8 +236,6 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [newSkillDesc, setNewSkillDesc] = useState("")
   const [isCreatingSkill, setIsCreatingSkill] = useState(false)
   const [skillListVersion, setSkillListVersion] = useState(0)
-  const [newSkillCategoryId, setNewSkillCategoryId] = useState("")
-  const [isAddSkillCategoryPopoverOpen, setIsAddSkillCategoryPopoverOpen] = useState(false)
 
   const [benefits, setBenefits] = useState<string[]>(["Bao ăn"])
   const [newBenefit, setNewBenefit] = useState("")
@@ -249,6 +267,11 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [postedJob, setPostedJob] = useState<PostedJobPreview | null>(null)
+  const postedJobRef = useRef<PostedJobPreview | null>(null)
+
+  useEffect(() => {
+    postedJobRef.current = postedJob
+  }, [postedJob])
 
   // Keep ref in sync with state so callbacks always see the latest value
   useEffect(() => {
@@ -276,10 +299,18 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
 
   const workersNeededNumber = Number.parseInt(workersNeeded, 10) || 0
-  const incomeNumber = Number.parseInt(income, 10) || 0
+  const incomeNumber = Number.parseInt(toDigitsOnly(income), 10) || 0
 
-  const selectedContractStartDate = contractStartDate ? parseDDMMYYYYToDate(contractStartDate) ?? undefined : undefined
-  const selectedContractEndDate = contractEndDate ? parseDDMMYYYYToDate(contractEndDate) ?? undefined : undefined
+  const selectedContractDateRange = useMemo<DateRange | undefined>(() => {
+    const from = contractStartDate ? parseDDMMYYYYToDate(contractStartDate) ?? undefined : undefined
+    const to = contractEndDate ? parseDDMMYYYYToDate(contractEndDate) ?? undefined : undefined
+
+    if (!from && !to) {
+      return undefined
+    }
+
+    return { from, to }
+  }, [contractStartDate, contractEndDate])
   const normalizedSelectedDailyDates = useMemo(() => mergeAndSortDates(selectedDailyDates), [selectedDailyDates])
   const calendarSelectedDates = useMemo(
     () => normalizedSelectedDailyDates.map((date) => new Date(date)),
@@ -303,7 +334,34 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   tomorrow.setHours(0, 0, 0, 0)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
+  const rememberSkillLabels = useCallback((skills: Array<{ id?: string | null; name?: string | null }>) => {
+    if (!skills.length) {
+      return
+    }
+
+    setSkillLabelsById((current) => {
+      const next = { ...current }
+
+      skills.forEach((skill) => {
+        const id = skill.id?.trim()
+        const name = skill.name?.trim()
+
+        if (id && name) {
+          next[id] = name
+        }
+      })
+
+      return next
+    })
+  }, [])
+
   const getSkillLabel = (skillId: string) => {
+    const rememberedLabel = skillLabelsById[skillId]
+
+    if (rememberedLabel) {
+      return rememberedLabel
+    }
+
     const foundSkill = availableSkills.find((item) => item.id === skillId)
     return foundSkill?.name ?? skillId
   }
@@ -366,21 +424,28 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   }
 
   const handleCreateSkill = async () => {
-    if (!newSkillName.trim() || !newSkillCategoryId) return
+    if (
+      !newSkillName.trim() ||
+      !selectedJobCategoryId ||
+      selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID
+    ) {
+      return
+    }
 
     try {
       setIsCreatingSkill(true)
       const response = await skillService.createSkill({
         name: newSkillName.trim(),
         description: newSkillDesc.trim() || newSkillName.trim(),
-        categoryId: newSkillCategoryId,
+        categoryId: selectedJobCategoryId,
         isActive: true,
       })
 
       const createdSkill = response.data
 
-      if (createdSkill && createdSkill.id && newSkillCategoryId === selectedJobCategoryId) {
-        setSelectedSkillIds((prev) => [...prev, createdSkill.id])
+      if (createdSkill && createdSkill.id) {
+        rememberSkillLabels([createdSkill])
+        setSelectedSkillIds((prev) => (prev.includes(createdSkill.id) ? prev : [...prev, createdSkill.id]))
       }
 
       setIsAddSkillDialogOpen(false)
@@ -397,24 +462,30 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   }
 
   const addRequirement = () => {
-    const value = newRequirement.trim()
+    const values = newRequirement
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
 
-    if (!value) {
+    if (!values.length) {
       return
     }
 
-    setRequirements((current) => [...current, value])
+    setRequirements((current) => [...current, ...values])
     setNewRequirement("")
   }
 
   const addBenefit = () => {
-    const value = newBenefit.trim()
+    const values = newBenefit
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
 
-    if (!value) {
+    if (!values.length) {
       return
     }
 
-    setBenefits((current) => [...current, value])
+    setBenefits((current) => [...current, ...values])
     setNewBenefit("")
   }
 
@@ -451,6 +522,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         }
 
         setAvailableSkills(fetchedSkills)
+        rememberSkillLabels(fetchedSkills)
         setTotalSkillPages(totalPages)
       } catch (error) {
         console.error(error)
@@ -462,7 +534,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     }
 
     void loadSkills()
-  }, [selectedJobCategoryId, skillPage, skillListVersion])
+  }, [selectedJobCategoryId, skillPage, skillListVersion, rememberSkillLabels])
 
   useEffect(() => {
     setSkillPage(1)
@@ -481,13 +553,14 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
         setTitle(existingJob.title ?? "")
         setDescription(extractEditableDescription(existingJob.description ?? ""))
-        setIncome(String(existingJob.wageAmount ?? ""))
+        setIncome(formatThousandsWithDots(String(existingJob.wageAmount ?? "")))
         setWorkersNeeded(String(existingJob.workersNeeded ?? 1))
         setLocation(existingJob.address ?? "")
         setLocationLat(existingJob.farm?.latitude)
         setLocationLng(existingJob.farm?.longitude)
         setRequirements(existingJob.requirements?.length ? existingJob.requirements : ["Có sức khỏe tốt"])
         setBenefits(existingJob.privileges?.length ? existingJob.privileges : ["Bao ăn"])
+        rememberSkillLabels(existingJob.jobSkillRequirements ?? [])
         setSelectedSkillIds((existingJob.jobSkillRequirements ?? []).map((skill) => skill.id).filter(Boolean))
         setSelectedJobCategoryId(existingJob.jobCategory?.id ?? DEFAULT_JOB_CATEGORY_ID)
         setSelectedFarmId(existingJob.farm?.farmId || (existingJob.farm as any)?.id || DEFAULT_FARM_ID)
@@ -532,7 +605,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     }
 
     void hydrateJobForEdit()
-  }, [isEditMode, jobId])
+  }, [isEditMode, jobId, rememberSkillLabels])
 
   useEffect(() => {
     const loadJobCategories = async () => {
@@ -550,11 +623,14 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         const activeCategories = fetchedCategories.filter((category) => category.isActive !== false)
         setJobCategories(activeCategories)
         setSelectedJobCategoryId((currentSelected) => {
-          if (currentSelected && currentSelected !== DEFAULT_JOB_CATEGORY_ID) {
-            return currentSelected
+          const firstCategoryId = activeCategories[0]?.id ?? DEFAULT_JOB_CATEGORY_ID
+
+          if (!currentSelected || currentSelected === DEFAULT_JOB_CATEGORY_ID) {
+            return firstCategoryId
           }
 
-          return activeCategories[0]?.id ?? DEFAULT_JOB_CATEGORY_ID
+          const isCurrentStillAvailable = activeCategories.some((category) => category.id === currentSelected)
+          return isCurrentStillAvailable ? currentSelected : firstCategoryId
         })
       } catch (error) {
         console.error(error)
@@ -653,54 +729,15 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     }
   }
 
-  const handleMapPick = async (latitude: number, longitude: number) => {
-    setLocationLat(latitude)
-    setLocationLng(longitude)
-
-    // Reverse geocode to get address
-    try {
-      const response = await fetch(
-        `${OSM_REVERSE_URL}?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            "Accept-Language": "vi",
-          },
-        },
-      )
-
-      if (response.ok) {
-        const data = (await response.json()) as { display_name?: string }
-        if (data.display_name) {
-          setLocation(data.display_name)
-        }
-      }
-    } catch {
-      // Continue with just coordinates if reverse geocode fails
-    }
-  }
-
-  const handleContractStartSelect = (date?: Date) => {
-    if (!date) {
+  const handleContractRangeSelect = (range?: DateRange) => {
+    if (!range?.from) {
       setContractStartDate("")
-      return
-    }
-
-    const formatted = format(date, "dd/MM/yyyy")
-    setContractStartDate(formatted)
-
-    const parsedEndDate = parseDDMMYYYYToDate(contractEndDate)
-    if (parsedEndDate && parsedEndDate < date) {
-      setContractEndDate("")
-    }
-  }
-
-  const handleContractEndSelect = (date?: Date) => {
-    if (!date) {
       setContractEndDate("")
       return
     }
 
-    setContractEndDate(format(date, "dd/MM/yyyy"))
+    setContractStartDate(format(range.from, "dd/MM/yyyy"))
+    setContractEndDate(range.to ? format(range.to, "dd/MM/yyyy") : "")
   }
 
   const toggleRangeSelectionMode = () => {
@@ -1093,7 +1130,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     benefits, incomeNumber, workersNeededNumber, isUrgent,
   ])
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(async (): Promise<boolean> => {
     try {
       setIsSavingDraft(true)
       const payload = buildDraftPayload()
@@ -1104,12 +1141,14 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         title: "Đã lưu bản nháp",
         description: "Bản nháp của bạn đã được lưu thành công.",
       })
+      return true
     } catch {
       toast({
         title: "Lưu thất bại",
         description: "Không thể lưu bản nháp. Vui lòng thử lại.",
         variant: "destructive",
       })
+      return false
     } finally {
       setIsSavingDraft(false)
     }
@@ -1118,11 +1157,12 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const loadDraft = useCallback((draft: Job) => {
     setTitle(draft.title ?? "")
     setDescription(extractEditableDescription(draft.description ?? ""))
-    setIncome(String(draft.wageAmount ?? ""))
+    setIncome(formatThousandsWithDots(String(draft.wageAmount ?? "")))
     setWorkersNeeded(String(draft.workersNeeded ?? 1))
     setLocation(draft.address ?? "")
     setRequirements(draft.requirements?.length ? draft.requirements : ["Có sức khỏe tốt"])
     setBenefits(draft.privileges?.length ? draft.privileges : ["Bao ăn"])
+    rememberSkillLabels(draft.jobSkillRequirements ?? [])
     setSelectedSkillIds((draft.jobSkillRequirements ?? []).map((s) => s.id).filter(Boolean))
     setSelectedJobCategoryId(draft.jobCategory?.id ?? DEFAULT_JOB_CATEGORY_ID)
     setSelectedFarmId(draft.farm?.farmId || (draft.farm as any)?.id || DEFAULT_FARM_ID)
@@ -1147,54 +1187,149 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
     setStep(1)
     toast({ title: "Đã tải bản nháp", description: `"${draft.title}" đã được tải vào form.` })
-  }, [toast])
+  }, [toast, rememberSkillLabels])
 
   // ─── Navigation interception ──────────────────────────────────────────────
+
+  const queueLeaveAction = useCallback((action: Exclude<PendingLeaveAction, null>) => {
+    pendingLeaveActionRef.current = action
+    setIsLeavingPromptOpen(true)
+  }, [])
+
+  const continuePendingLeaveAction = useCallback(() => {
+    const pendingAction = pendingLeaveActionRef.current
+    pendingLeaveActionRef.current = null
+
+    if (!pendingAction) {
+      return
+    }
+
+    if (pendingAction.type === "route") {
+      router.push(pendingAction.url)
+      return
+    }
+
+    allowBrowserExitRef.current = true
+
+    if (pendingAction.type === "reload") {
+      window.location.reload()
+    }
+  }, [router])
 
   // Intercept browser tab close / refresh
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirtyRef.current && !postedJob) {
+      if (allowBrowserExitRef.current) {
+        return
+      }
+
+      if (isDirtyRef.current && !postedJobRef.current) {
         e.preventDefault()
         e.returnValue = ""
       }
     }
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [postedJob])
+  }, [])
+
+  // Intercept in-app anchor navigation and show leave dialog if form has unsaved changes.
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (!isDirtyRef.current || postedJobRef.current) {
+        return
+      }
+
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return
+      }
+
+      const target = event.target as HTMLElement | null
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null
+
+      if (!anchor) {
+        return
+      }
+
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) {
+        return
+      }
+
+      const href = anchor.getAttribute("href")
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        return
+      }
+
+      const destination = new URL(anchor.href, window.location.href)
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      const next = `${destination.pathname}${destination.search}${destination.hash}`
+
+      if (destination.origin !== window.location.origin || current === next) {
+        return
+      }
+
+      event.preventDefault()
+      queueLeaveAction({ type: "route", url: next })
+    }
+
+    document.addEventListener("click", handleDocumentClick, true)
+    return () => document.removeEventListener("click", handleDocumentClick, true)
+  }, [queueLeaveAction])
+
+  // Intercept keyboard reload and route it through the leave prompt.
+  useEffect(() => {
+    const handleKeyboardReload = (event: globalThis.KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      const isReloadShortcut = event.key === "F5" || ((event.ctrlKey || event.metaKey) && key === "r")
+
+      if (!isReloadShortcut || !isDirtyRef.current || postedJobRef.current) {
+        return
+      }
+
+      event.preventDefault()
+      queueLeaveAction({ type: "reload" })
+    }
+
+    window.addEventListener("keydown", handleKeyboardReload)
+    return () => window.removeEventListener("keydown", handleKeyboardReload)
+  }, [queueLeaveAction])
 
   // Uses the ref (not state) so the callback never captures a stale dirty value
   const handleNavigateAway = useCallback((url: string) => {
-    if (isDirtyRef.current && !postedJob) {
-      pendingNavigationUrl.current = url
-      setIsLeavingPromptOpen(true)
+    if (isDirtyRef.current && !postedJobRef.current) {
+      queueLeaveAction({ type: "route", url })
     } else {
       router.push(url)
     }
-  }, [router, postedJob])
+  }, [queueLeaveAction, router])
 
   const handleLeavingPromptSaveDraft = useCallback(async () => {
-    await saveDraft()
-    setIsLeavingPromptOpen(false)
-    if (pendingNavigationUrl.current) {
-      router.push(pendingNavigationUrl.current)
-      pendingNavigationUrl.current = null
+    const isSaved = await saveDraft()
+    if (!isSaved) {
+      return
     }
-  }, [saveDraft, router])
+
+    setIsLeavingPromptOpen(false)
+    continuePendingLeaveAction()
+  }, [continuePendingLeaveAction, saveDraft])
 
   const handleLeavingPromptLeave = useCallback(() => {
     setIsLeavingPromptOpen(false)
     setIsDirty(false)
     isDirtyRef.current = false
-    if (pendingNavigationUrl.current) {
-      router.push(pendingNavigationUrl.current)
-      pendingNavigationUrl.current = null
-    }
-  }, [router])
+    continuePendingLeaveAction()
+  }, [continuePendingLeaveAction])
 
   const handleLeavingPromptStay = useCallback(() => {
     setIsLeavingPromptOpen(false)
-    pendingNavigationUrl.current = null
+    pendingLeaveActionRef.current = null
+    allowBrowserExitRef.current = false
   }, [])
 
   if (isLoadingExistingJob) {
@@ -1245,7 +1380,9 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
               variant="outline"
               size="sm"
               className="gap-2"
-              onClick={saveDraft}
+              onClick={() => {
+                void saveDraft()
+              }}
               disabled={isSavingDraft}
             >
               {isSavingDraft ? (
@@ -1375,7 +1512,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                       <Label className="font-semibold flex items-center justify-between">
                         <span></span>
                       </Label>
-                      <div className="flex items-center justify-between rounded-lg border border-muted-foreground/30 p-3 h-11">
+                      <div className="flex items-center justify-between rounded-lg border border-red-500 bg-red-100 p-3 h-11">
                         <span className="text-sm">Tuyển gấp</span>
                         <Switch checked={isUrgent} onCheckedChange={setIsUrgent} />
                       </div>
@@ -1483,100 +1620,111 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                   {scheduleType === "contract" ? (
                     <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày bắt đầu</Label>
-                        <div className="relative">
-                          <Input value={contractStartDate} onChange={(e) => setContractStartDate(e.target.value)} placeholder="dd/mm/yyyy" className="pl-10" />
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" className="absolute left-0 top-0 h-10 w-10 text-muted-foreground"><CalendarIcon className="h-4 w-4" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={selectedContractStartDate} onSelect={handleContractStartSelect} disabled={(d) => d < tomorrow} />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
+                        <Label className="text-xs font-bold uppercase text-muted-foreground">Khoảng thời gian</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                              {contractStartDate && contractEndDate
+                                ? `${contractStartDate} - ${contractEndDate}`
+                                : contractStartDate
+                                  ? `${contractStartDate} - Chọn ngày kết thúc`
+                                  : "Chọn ngày bắt đầu và ngày kết thúc"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="range"
+                              selected={selectedContractDateRange}
+                              onSelect={handleContractRangeSelect}
+                              numberOfMonths={2}
+                              disabled={(d) => d < tomorrow}
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày kết thúc</Label>
-                        <div className="relative">
-                          <Input value={contractEndDate} onChange={(e) => setContractEndDate(e.target.value)} placeholder="dd/mm/yyyy" className="pl-10" />
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" className="absolute left-0 top-0 h-10 w-10 text-muted-foreground"><CalendarIcon className="h-4 w-4" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={selectedContractEndDate} onSelect={handleContractEndSelect} disabled={(d) => d < tomorrow || (selectedContractStartDate ? d < selectedContractStartDate : false)} />
-                            </PopoverContent>
-                          </Popover>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày bắt đầu</Label>
+                          <Input value={contractStartDate} placeholder="dd/mm/yyyy" readOnly className="bg-muted/30" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày kết thúc</Label>
+                          <Input value={contractEndDate} placeholder="dd/mm/yyyy" readOnly className="bg-muted/30" />
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                      <div className="rounded-lg border bg-card p-3 shadow-inner">
-                        <div className="mb-3 flex items-center justify-between">
-                          <Label className="text-xs font-bold">CHỌN NGÀY</Label>
-                          <div className="flex gap-1">
-                            <Button type="button" size="sm" variant={isRangePicking ? "default" : "outline"} className="h-7 text-[15px] px-2" onClick={toggleRangeSelectionMode}>
-                              {isRangePicking ? "Chọn đích" : "Khoảng"}
-                            </Button>
-                            <Button type="button" size="sm" variant="ghost" className="h-7 text-[15px] px-2 text-destructive" onClick={clearAllSelectedDailyDates} disabled={selectedDailyDaysCount === 0}>
-                              Xóa
-                            </Button>
+                      <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="rounded-lg border bg-card p-3 shadow-inner">
+                          <div className="mb-3 flex items-center justify-between">
+                            <Label className="text-xs font-bold">CHỌN NGÀY</Label>
+                            <div className="flex gap-1">
+                              <Button type="button" size="sm" variant={isRangePicking ? "default" : "outline"} className="h-7 text-[15px] px-2" onClick={toggleRangeSelectionMode}>
+                                {isRangePicking ? "Chọn đích" : "Khoảng"}
+                              </Button>
+                              <Button type="button" size="sm" variant="ghost" className="h-7 text-[15px] px-2 text-destructive" onClick={clearAllSelectedDailyDates} disabled={selectedDailyDaysCount === 0}>
+                                Xóa
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex justify-center bg-background rounded-md p-1">
+                            <Calendar
+                              key={calendarSelectionSignature}
+                              mode="multiple"
+                              selected={calendarSelectedDates}
+                              onDayClick={handleDailyCalendarDayClick}
+                              disabled={(d) => d < tomorrow}
+                              className="rounded-md scale-100 w-full"
+                            />
+                          </div>
+                          <div className="mt-2 text-center">
+                            <Badge variant="secondary" className="font-normal">
+                              {selectedDailyDaysCount > 0 ? `Đã chọn ${selectedDailyDaysCount} ngày` : "Chưa chọn ngày"}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="flex justify-center bg-background rounded-md p-1">
-                          <Calendar
-                            key={calendarSelectionSignature}
-                            mode="multiple"
-                            selected={calendarSelectedDates}
-                            onDayClick={handleDailyCalendarDayClick}
-                            disabled={(d) => d < tomorrow}
-                            className="rounded-md scale-100 w-full"
-                          />
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] uppercase text-muted-foreground font-bold">Giờ bắt đầu</Label>
+                            <TimePicker value={dailyStartTime} onChange={setDailyStartTime} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] uppercase text-muted-foreground font-bold">Giờ kết thúc</Label>
+                            <TimePicker value={dailyEndTime} onChange={setDailyEndTime} />
+                          </div>
                         </div>
-                        <div className="mt-2 text-center">
-                          <Badge variant="secondary" className="font-normal">
-                            {selectedDailyDaysCount > 0 ? `Đã chọn ${selectedDailyDaysCount} ngày` : "Chưa chọn ngày"}
-                          </Badge>
+
+                        <div className="space-y-2 pt-5 border-t">
+                          <Label className="flex justify-between">
+                            <span>Số lượng nhân công</span>
+                            <span className="font-bold text-primary">{workersNeeded}</span>
+                          </Label>
+                          <Input type="number" min="1" value={workersNeeded} onChange={(e) => setWorkersNeeded(e.target.value)} />
                         </div>
+
+
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground font-bold">Giờ bắt đầu</Label>
-                          <TimePicker value={dailyStartTime} onChange={setDailyStartTime} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground font-bold">Giờ kết thúc</Label>
-                          <TimePicker value={dailyEndTime} onChange={setDailyEndTime} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 pt-5 border-t">
-                        <Label className="flex justify-between">
-                          <span>Số lượng nhân công</span>
-                          <span className="font-bold text-primary">{workersNeeded}</span>
-                        </Label>
-                        <Input type="number" min="1" value={workersNeeded} onChange={(e) => setWorkersNeeded(e.target.value)} />
-                      </div>
-
-
-                    </div>
                   )}
 
-                  <div className="relative">
-                    <div className="absolute left-3 top-2.5 text-muted-foreground text-xs pr-3">VNĐ</div>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={income}
-                      onChange={(e) => setIncome(e.target.value)}
-                      className="pl-12 text-lg font-medium text-teal-700 dark:text-teal-400"
-                      placeholder="300,000"
-                    />
-                  </div>
-                </CardContent>
+                      <div className="relative">
+                        <div className="absolute left-3 top-2.5 text-muted-foreground text-xs pr-3">VNĐ</div>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={income}
+                          onChange={(e) => setIncome(formatThousandsWithDots(e.target.value))}
+                          className="pl-12 text-lg font-medium text-teal-700 dark:text-teal-400"
+                          placeholder="300.000"
+                        />
+                      </div>
+                    </CardContent>
               </Card>
 
               <Card className="shadow-md overflow-hidden border-t-4 border-t-teal-500">
@@ -1701,11 +1849,10 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     <OsmLocationPicker
                       latitude={locationLat ?? null}
                       longitude={locationLng ?? null}
-                      onPick={handleMapPick}
                       className="h-full"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Bấm vào bản đồ để chọn vị trí công việc</p>
+                  <p className="text-xs text-muted-foreground">Bản đồ chỉ hiển thị vị trí đã chọn.</p>
                 </CardContent>
               </Card>
 
@@ -1732,7 +1879,6 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                         size="sm"
                         onClick={() => {
                           setIsAddSkillDialogOpen(true)
-                          setNewSkillCategoryId(selectedJobCategoryId)
                         }}
                         disabled={selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID}
                       >
@@ -1748,41 +1894,15 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                         <div className="grid gap-4 py-4">
                           <div className="space-y-2">
                             <Label>Danh mục công việc <span className="text-destructive">*</span></Label>
-                            <Popover open={isAddSkillCategoryPopoverOpen} onOpenChange={setIsAddSkillCategoryPopoverOpen}>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className="w-full justify-between font-normal"
-                                >
-                                  {getJobCategoryLabel(newSkillCategoryId) || "Chọn danh mục"}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[375px] p-0" align="start">
-                                <Command>
-                                  <CommandInput placeholder="Tìm kiếm danh mục..." />
-                                  <CommandList>
-                                    <CommandEmpty>Không tìm thấy.</CommandEmpty>
-                                    <CommandGroup>
-                                      {jobCategories.map((category) => (
-                                        <CommandItem
-                                          key={category.id}
-                                          value={category.name}
-                                          onSelect={() => {
-                                            setNewSkillCategoryId(category.id)
-                                            setIsAddSkillCategoryPopoverOpen(false)
-                                          }}
-                                        >
-                                          <Check className={cn("mr-2 h-4 w-4", newSkillCategoryId === category.id ? "opacity-100" : "opacity-0")} />
-                                          {category.name}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className="w-full justify-between font-normal"
+                              disabled
+                            >
+                              {selectedJobCategoryLabel || "Chọn danh mục ở phần thông tin công việc"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="new-skill-name">
@@ -1809,7 +1929,16 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                           <Button type="button" variant="outline" onClick={() => { setIsAddSkillDialogOpen(false); setNewSkillName(""); setNewSkillDesc(""); }}>
                             Hủy
                           </Button>
-                          <Button type="button" onClick={handleCreateSkill} disabled={isCreatingSkill || !newSkillName.trim() || !newSkillCategoryId}>
+                          <Button
+                            type="button"
+                            onClick={handleCreateSkill}
+                            disabled={
+                              isCreatingSkill ||
+                              !newSkillName.trim() ||
+                              !selectedJobCategoryId ||
+                              selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID
+                            }
+                          >
                             {isCreatingSkill ? "Đang lưu..." : "Lưu lại"}
                           </Button>
                         </div>
@@ -1833,7 +1962,8 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                                 id={`skill-${skill.id}`}
                                 checked={selectedSkillIds.includes(skill.id)}
                                 onCheckedChange={() => toggleSkill(skill.id)}
-                                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                onClick={() => toggleSkill(skill.id)}
+                                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer"
                               />
                               <span className="text-sm font-medium">{skill.name}</span>
                             </div>
@@ -1943,8 +2073,8 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                   )}
                 </div>
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <Button type="button" variant="ghost" asChild className="flex-1 sm:flex-none font-semibold hover:bg-muted">
-                    <Link href="/farmer/jobs">Hủy bỏ</Link>
+                  <Button type="button" variant="ghost" className="flex-1 sm:flex-none font-semibold hover:bg-muted" onClick={() => handleNavigateAway("/farmer/jobs")}>
+                    Hủy bỏ
                   </Button>
                   <Button type="button" onClick={goToPreview} className="flex-1 sm:flex-none shadow-lg shadow-agro-green/10 bg-agro-green hover:bg-agro-green-dark text-white font-bold h-11 px-8">
                     Tiếp theo <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
@@ -1965,7 +2095,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <Badge variant="outline" className={cn("px-4 py-1.5 text-sm font-bold uppercase tracking-widest", isUrgent ? "bg-rose-50 text-rose-600 border-rose-200 shadow-sm" : "bg-blue-50 text-blue-700 border-blue-200")}>
-                        {isUrgent ? "🔥 Tuyển gấp" : "Tiêu chuẩn"}
+                        {isUrgent ? "Tuyển gấp" : "Tiêu chuẩn"}
                       </Badge>
                     </div>
                   </div>

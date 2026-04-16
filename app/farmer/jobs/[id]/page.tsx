@@ -66,9 +66,6 @@ function JobReviews({ jobId }: { jobId: string }) {
       .finally(() => setLoading(false));
   }, [user?.userId, jobId]);
 
-  if (loading) return null;
-  if (reviews.length === 0) return null;
-
   return (
     <Card className="border-0 shadow-sm bg-white/70 dark:bg-zinc-900/70">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3">
@@ -78,21 +75,33 @@ function JobReviews({ jobId }: { jobId: string }) {
         <CardTitle className="text-lg">Đánh giá từ người làm</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {reviews.map(review => (
-          <div key={review.id} className="p-4 rounded-lg bg-muted/30 border border-muted/50 flex flex-col gap-2">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className={cn("h-4 w-4", i < review.ratingScore ? "text-amber-500 fill-amber-500" : "text-muted stroke-muted-foreground/30")} />
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(new Date(review.createdAt))}
-              </span>
-            </div>
-            <p className="text-sm text-foreground leading-relaxed">{review.reviewText || "Không có nội dung đánh giá."}</p>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-r-transparent" />
+            <p className="mt-3 text-sm">Đang tải đánh giá...</p>
           </div>
-        ))}
+        ) : reviews.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <MessageCircleIcon className="h-10 w-10 mb-3 opacity-30" />
+            <p className="text-sm">Chưa có đánh giá nào từ người làm.</p>
+          </div>
+        ) : (
+          reviews.map(review => (
+            <div key={review.id} className="p-4 rounded-lg bg-muted/30 border border-muted/50 flex flex-col gap-2">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={cn("h-4 w-4", i < review.ratingScore ? "text-amber-500 fill-amber-500" : "text-muted stroke-muted-foreground/30")} />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(new Date(review.createdAt))}
+                </span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">{review.reviewText || "Không có nội dung đánh giá."}</p>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   )
@@ -167,6 +176,15 @@ export default function FarmerJobDetailPage() {
   const [isSubmittingRating, setIsSubmittingRating] = useState(false)
   const [ratingError, setRatingError] = useState<string | null>(null)
   const [ratedByWorkerId, setRatedByWorkerId] = useState<Record<string, RatingDTO>>({})
+
+  const redirectIfDraftJob = (jobData: Job) => {
+    if (jobData.statusId === JOB_POST_STATUS.Draft) {
+      router.replace("/farmer/jobs")
+      return true
+    }
+
+    return false
+  }
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -254,6 +272,10 @@ export default function FarmerJobDetailPage() {
   }
 
   const status = useMemo(() => normalizeStatus(job?.statusId, job?.startDate), [job?.statusId, job?.startDate])
+  const canDisplayJobReports =
+    job?.statusId !== JOB_POST_STATUS.Draft &&
+    job?.statusId !== JOB_POST_STATUS.Published &&
+    job?.statusId !== JOB_POST_STATUS.Closed
 
   const jobStatusBadge = useMemo(() => {
     switch (status) {
@@ -420,6 +442,9 @@ export default function FarmerJobDetailPage() {
 
       // Refresh job detail
       const response = await jobService.getJobDetail(jobId)
+      if (redirectIfDraftJob(response.data)) {
+        return
+      }
       setJob(response.data)
     } catch (err) {
       console.error(err)
@@ -496,6 +521,9 @@ export default function FarmerJobDetailPage() {
 
       // Refresh job detail
       const response = await jobService.getJobDetail(jobId)
+      if (redirectIfDraftJob(response.data)) {
+        return
+      }
       setJob(response.data)
       setIsCancelDialogOpen(false)
     } catch (err) {
@@ -594,6 +622,9 @@ export default function FarmerJobDetailPage() {
         setIsLoading(true)
         setError(null)
         const response = await jobService.getJobDetail(jobId)
+        if (redirectIfDraftJob(response.data)) {
+          return
+        }
         setJob(response.data)
       } catch (fetchError) {
         console.error(fetchError)
@@ -915,7 +946,7 @@ export default function FarmerJobDetailPage() {
 
             {/* Applications Sidebar */}
             <div className="lg:col-span-1">
-              <Card className="lg:sticky lg:top-8 border-0 shadow-sm overflow-hidden bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md">
+              <Card className="lg:top-8 border-0 shadow-sm overflow-hidden bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md">
                 <div className="h-1 bg-agro-green" />
                 <CardHeader className="pb-4 flex flex-row items-center justify-between gap-3 space-y-0">
                   <div className="flex items-center gap-3">
@@ -1129,10 +1160,7 @@ export default function FarmerJobDetailPage() {
               </Card>
 
               {/* Job Reports / Job Details Card */}
-              {job.statusId !== JOB_POST_STATUS.Draft &&
-                job.statusId !== JOB_POST_STATUS.Published &&
-                job.statusId !== JOB_POST_STATUS.Closed && (
-                  <Card className="border-0 mt-8 shadow-sm overflow-hidden bg-white/80 dark:bg-zinc-900/80">
+              <Card className="border-0 mt-8 shadow-sm overflow-hidden bg-white/80 dark:bg-zinc-900/80">
                     <div className="h-1 bg-blue-500" />
                     <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
                       <div className="flex items-center gap-3">
@@ -1156,7 +1184,7 @@ export default function FarmerJobDetailPage() {
                           }
                         }}
                         className="h-8 w-8 rounded-full text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-all"
-                        disabled={isLoadingJobDetails}
+                        disabled={isLoadingJobDetails || !canDisplayJobReports}
                       >
                         <RotateCw className={cn("h-4 w-4", isLoadingJobDetails && "animate-spin")} />
                       </Button>
@@ -1165,6 +1193,12 @@ export default function FarmerJobDetailPage() {
                       {isLoadingJobDetails ? (
                         <div className="flex items-center justify-center py-12">
                           <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-r-transparent" />
+                        </div>
+                      ) : !canDisplayJobReports ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                          <Clock className="h-12 w-12 mb-4 opacity-20" />
+                          <p className="text-sm">Chưa có báo cáo công việc.</p>
+                          <p className="text-xs">Báo cáo sẽ hiển thị khi công việc bắt đầu.</p>
                         </div>
                       ) : jobDetails.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -1252,7 +1286,6 @@ export default function FarmerJobDetailPage() {
                       )}
                     </CardContent>
                   </Card>
-                )}
             </div>
           </div>
         </div>
