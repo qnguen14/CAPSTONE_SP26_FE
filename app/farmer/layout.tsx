@@ -218,44 +218,44 @@ export default function FarmerLayout({
       {/* Top Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-border shadow-sm">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 md:gap-6">
             {/* Logo */}
-            <Link href="/farmer/dashboard" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center">
+            <Link href="/farmer/dashboard" className="flex items-center gap-2 justify-self-start">
+              <div className="ml-20 w-10 h-10 rounded-full flex items-center justify-center">
                 <img
                   src="/logo.png"
                   alt="AgroTemp Logo"
                   className="h-10 w-10 object-contain"
                 />
               </div>
-              <span className="text-xl font-bold text-agro-green">AgroTemp</span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
-                const isActive = item.href === "/farmer"
-                  ? pathname === "/farmer"
-                  : pathname === item.href || pathname.startsWith(item.href + "/");
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={`gap-2 ${isActive
-                        ? "bg-agro-green text-white hover:bg-agro-green-dark"
-                        : "text-foreground hover:bg-gray-200"
-                        }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Button>
-                  </Link>
-                );
-              })}
-            </nav>
-
+            <div className="hidden md:flex justify-self-center">
+              <nav className="flex items-center gap-1 rounded-full border border-border/70 bg-background/70 p-1 shadow-sm">
+                {navItems.map((item) => {
+                  const isActive = item.href === "/farmer"
+                    ? pathname === "/farmer"
+                    : pathname === item.href || pathname.startsWith(item.href + "/");
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        className={`h-9 rounded-full px-3 gap-2 ${isActive
+                          ? "bg-agro-green text-white hover:bg-agro-green-dark"
+                          : "text-foreground hover:bg-gray-200"
+                          }`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
             {/* Right Side - Notifications & Profile */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-self-end gap-2 md:gap-3 mr-20">
               {/* Notification Bell */}
               <div className="relative" ref={notifRef}>
                 <Button
@@ -267,7 +267,7 @@ export default function FarmerLayout({
                 >
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 bg-agro-orange text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute top-1 right-1 min-w-4 h-4 px-0.5 bg-agro-orange text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
@@ -289,7 +289,7 @@ export default function FarmerLayout({
                           >
                             <ChevronLeft className="h-4 w-4" />
                           </Button>
-                          <span className="text-[10px] font-bold min-w-[32px] text-center">
+                          <span className="text-[10px] font-bold min-w-8 text-center">
                             {notifPage}/{notifTotalPages}
                           </span>
                           <Button
@@ -314,7 +314,7 @@ export default function FarmerLayout({
                     </div>
 
                     {/* List */}
-                    <div className="max-h-[400px] overflow-y-auto divide-y divide-border">
+                    <div className="max-h-100 overflow-y-auto divide-y divide-border">
                       {notifications.length === 0 ? (
                         <div className="py-8 text-center text-sm text-muted-foreground">
                           Không có thông báo nào
@@ -328,7 +328,7 @@ export default function FarmerLayout({
                           >
                             {/* Unread dot */}
                             <span
-                              className={`mt-1.5 flex-shrink-0 w-2 h-2 rounded-full ${!notif.isRead ? "bg-agro-orange" : "bg-transparent"
+                              className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${!notif.isRead ? "bg-agro-orange" : "bg-transparent"
                                 }`}
                             />
                             <div className="flex-1 min-w-0">
@@ -356,7 +356,7 @@ export default function FarmerLayout({
                             {/* Delete button */}
                             <button
                               onClick={() => handleDeleteNotif(notif.id)}
-                              className="flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors text-xs mt-1"
+                              className="shrink-0 text-muted-foreground hover:text-destructive transition-colors text-xs mt-1"
                               aria-label="Xoá thông báo"
                             >
                               ✕

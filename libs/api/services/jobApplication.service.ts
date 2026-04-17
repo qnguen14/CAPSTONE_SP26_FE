@@ -75,6 +75,11 @@ export const jobApplicationService = {
         return response.data;
     },
 
+    cancelApplication: async (id: string): Promise<ApiResponse<ApplicationDTO>> => {
+        const response = await axiosInstance.put(API_ENDPOINTS.JOBS.CANCEL_APPLICATION(id));
+        return response.data;
+    },
+
     /**
      * Backward-compatible reject helper
      */

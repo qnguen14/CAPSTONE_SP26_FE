@@ -186,6 +186,7 @@ export default function FarmerJobDetailPage() {
   const [jobDetailsPage, setJobDetailsPage] = useState(1)
   const [jobDetailsTotalPages, setJobDetailsTotalPages] = useState(1)
   const [autoAcceptingId, setAutoAcceptingId] = useState<string | null>(null)
+  const [cancellingApplicationId, setCancellingApplicationId] = useState<string | null>(null)
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false)
   const [ratingApplication, setRatingApplication] = useState<ApplicationDTO | null>(null)
   const [ratingScore, setRatingScore] = useState(5)
@@ -447,6 +448,27 @@ export default function FarmerJobDetailPage() {
       setApplicationDetailError("Không thể phản hồi hồ sơ ứng tuyển. Vui lòng thử lại.")
     } finally {
       setIsSubmittingResponse(false)
+    }
+  }
+
+  const handleCancelApplication = async (applicationId: string) => {
+    if (!jobId) return
+
+    try {
+      setCancellingApplicationId(applicationId)
+      await jobApplicationService.cancelApplication(applicationId)
+      await loadApplications(jobId, applicationsPage)
+
+      if (selectedApplication?.id === applicationId) {
+        const latest = await jobApplicationService.getApplicationDetail(applicationId)
+        setSelectedApplication(latest.data)
+        setResponseMessage(latest.data.responseMessage ?? "")
+      }
+    } catch (cancelError) {
+      console.error(cancelError)
+      setApplicationDetailError("Không thể hủy hồ sơ ứng tuyển. Vui lòng thử lại.")
+    } finally {
+      setCancellingApplicationId(null)
     }
   }
 
@@ -1128,7 +1150,24 @@ export default function FarmerJobDetailPage() {
                                     }}
                                   >
                                     <MessageSquare className="h-3.5 w-3.5" />
-                                  </Button>
+                                  </Button> 
+                                  {job.statusId != JOB_POST_STATUS.Completed && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                                      disabled={cancellingApplicationId === application.id}
+                                      onClick={() => void handleCancelApplication(application.id)}
+                                    >
+                                      {cancellingApplicationId === application.id ? (
+                                        <RotateCw className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <XCircle className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
+                                  )
+                                  }
                                   {job.statusId === JOB_POST_STATUS.Completed && application.worker?.userId ? (
                                     ratedByWorkerId[application.worker.userId] ? (
                                       <Badge className="h-8 border-amber-200 bg-amber-50 px-2 text-normal text-amber-700 hover:bg-amber-50">
@@ -1530,9 +1569,32 @@ export default function FarmerJobDetailPage() {
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Hồ sơ này đã được phản hồi{selectedApplication.respondedAt ? ` lúc ${formatDateTime(selectedApplication.respondedAt)}` : ""}.
-                </p>
+                <div className="flex w-full items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Hồ sơ này đã được phản hồi{selectedApplication.respondedAt ? ` lúc ${formatDateTime(selectedApplication.respondedAt)}` : ""}.
+                  </p>
+                  {selectedApplication.statusId === APP_STATUS.accepted ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      onClick={() => void handleCancelApplication(selectedApplication.id)}
+                      disabled={cancellingApplicationId === selectedApplication.id}
+                    >
+                      {cancellingApplicationId === selectedApplication.id ? (
+                        <>
+                          <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                          Đang hủy...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Hủy ứng tuyển
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
               )}
             </DialogFooter>
           ) : null}
