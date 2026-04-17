@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Users,
-  Briefcase,
-  DollarSign,
-  TrendingUp,
-  Activity,
-} from "lucide-react";
+import { Users, Briefcase, TrendingUp, Activity, Banknote } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -99,9 +93,9 @@ export function AdminDashboard() {
           color: "bg-[#D28228]",
         },
         {
-          label: "Tổng doanh thu",
+          label: "Tổng tiền đã nạp",
           value: data.stats.totalRevenue.toLocaleString("vi-VN") + " ₫",
-          icon: DollarSign,
+          icon: Banknote,
           color: "bg-[#10B981]",
         },
         {

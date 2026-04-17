@@ -21,7 +21,7 @@ export function AdminSidebar({ currentPage, onPageChange }: AdminSidebarProps) {
     { id: "jobs", label: "Quản lý công việc", icon: Briefcase },
     { id: "transactions", label: "Giao dịch & Ví", icon: DollarSign },
     { id: "disputes", label: "Tranh chấp", icon: AlertCircle },
-    { id: "config", label: "Cấu hình hệ thống", icon: Settings },
+    // { id: "config", label: "Cấu hình hệ thống", icon: Settings },
   ];
 
   return (
@@ -59,13 +59,6 @@ export function AdminSidebar({ currentPage, onPageChange }: AdminSidebarProps) {
           );
         })}
       </nav>
-
-      <div className="p-4 border-t border-[#2D6641]">
-        <div className="bg-white/10 rounded-lg p-3">
-          <p className="text-xs text-white/70 mb-2">Phiên bản hệ thống</p>
-          <p className="font-semibold text-sm">v1.0.0</p>
-        </div>
-      </div>
     </aside>
   );
 }

@@ -34,8 +34,8 @@ export function AdminShell({ initialPage = "dashboard" }: AdminShellProps) {
         return <AdminTransactions />;
       case "disputes":
         return <AdminDisputes />;
-      case "config":
-        return <AdminSettings />;
+      // case "config":
+      //   return <AdminSettings />;
       case "dashboard":
       default:
         return <AdminDashboard />;
