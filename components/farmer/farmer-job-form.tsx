@@ -1372,18 +1372,11 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-full h-10 w-10 border-muted-foreground/20"
-            onClick={() => handleNavigateAway("/farmer/jobs")}
-          >
-            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-          </Button>
+      <div className="relative overflow-hidden rounded-2xl border bg-linear-to-r from-emerald-50 via-teal-50 to-cyan-50 p-5 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20">
+        <div className="pointer-events-none absolute -top-12 right-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-700/20" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {isEditMode ? "Chỉnh sửa tin tuyển dụng" : "Đăng tin tuyển dụng"}
             </h1>
             <p className="text-muted-foreground mt-1 mb-2">
@@ -1392,76 +1385,81 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                 : "Tạo nhân công phù hợp cho địa điểm canh tác của bạn."}
             </p>
           </div>
-        </div>
 
-        {!postedJob && (
-          <div className="flex items-center gap-3">
-            {/* Draft buttons */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 hover:text-foreground"
-              onClick={() => setIsDraftDialogOpen(true)}
-            >
-              <FileText className="h-4 w-4" />
-              Bản nháp
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                void saveDraft()
-              }}
-              disabled={isSavingDraft}
-            >
-              {isSavingDraft ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent inline-block" />
-                  Đang lưu...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4" />
-                  Lưu nháp
-                </>
-              )}
-            </Button>
-
-            {/* Step indicator */}
-            <div className="flex items-center gap-4 py-2">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-500 shadow-sm",
-                  step === 1 ? "border-agro-green bg-agro-green text-white scale-110" : "border-agro-green bg-white text-agro-green"
-                )}>
-                  {step > 1 ? <Check className="h-5 w-5" /> : <span className="font-bold">1</span>}
-                </div>
-                <div className="hidden sm:block">
-                  <p className={cn("text-xs font-bold uppercase tracking-wider", step === 1 ? "text-agro-green" : "text-muted-foreground")}>Bước 1</p>
-                  <p className={cn("text-sm font-semibold", step === 1 ? "text-foreground" : "text-muted-foreground")}>Soạn thảo</p>
-                </div>
+          {!postedJob && (
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 sm:gap-6 mt-4 sm:mt-0">
+              {/* Draft buttons */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-white/50 backdrop-blur-sm border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors shadow-sm"
+                  onClick={() => setIsDraftDialogOpen(true)}
+                >
+                  <FileText className="h-4 w-4 text-emerald-600" />
+                  <span className="font-medium">Bản nháp</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-white/50 backdrop-blur-sm border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors shadow-sm"
+                  onClick={() => {
+                    void saveDraft()
+                  }}
+                  disabled={isSavingDraft}
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-r-transparent inline-block" />
+                      <span className="font-medium">Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 text-emerald-600" />
+                      <span className="font-medium">Lưu nháp</span>
+                    </>
+                  )}
+                </Button>
               </div>
 
-              <div className="h-0.5 w-12 bg-muted rounded-full overflow-hidden">
-                <div className={cn("h-full bg-agro-green transition-all duration-1000", step === 2 ? "w-full" : "w-0")} />
-              </div>
+              {/* Divider for desktop */}
+              <div className="hidden sm:block h-8 w-px bg-emerald-200/60 dark:bg-emerald-800/60" />
 
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-500 shadow-sm",
-                  step === 2 ? "border-agro-green bg-agro-green text-white scale-110" : "border-muted bg-white text-muted-foreground"
-                )}>
-                  <span className="font-bold">2</span>
+              {/* Step indicator */}
+              <div className="flex items-center gap-2 sm:gap-3 py-1">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all duration-300 shadow-sm",
+                    step === 1 ? "border-agro-green bg-agro-green text-white scale-110" : "border-agro-green bg-white text-agro-green"
+                  )}>
+                    {step > 1 ? <Check className="h-4 w-4" /> : <span className="text-sm font-bold">1</span>}
+                  </div>
+                  <div className="hidden lg:block">
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider", step === 1 ? "text-agro-green" : "text-muted-foreground")}>Bước 1</p>
+                    <p className={cn("text-xs font-semibold", step === 1 ? "text-foreground" : "text-muted-foreground")}>Soạn thảo</p>
+                  </div>
                 </div>
-                <div className="hidden sm:block">
-                  <p className={cn("text-xs font-bold uppercase tracking-wider", step === 2 ? "text-agro-green" : "text-muted-foreground")}>Bước 2</p>
-                  <p className={cn("text-sm font-semibold", step === 2 ? "text-foreground" : "text-muted-foreground")}>Xác nhận</p>
+
+                <div className="h-0.5 w-8 sm:w-10 overflow-hidden rounded-full bg-emerald-100">
+                  <div className={cn("h-full bg-agro-green transition-all duration-500", step === 2 ? "w-full" : "w-0")} />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all duration-300 shadow-sm",
+                    step === 2 ? "border-agro-green bg-agro-green text-white scale-110" : "border-emerald-100 bg-white text-muted-foreground"
+                  )}>
+                    <span className="text-sm font-bold">2</span>
+                  </div>
+                  <div className="hidden lg:block">
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider", step === 2 ? "text-agro-green" : "text-muted-foreground")}>Bước 2</p>
+                    <p className={cn("text-xs font-semibold", step === 2 ? "text-foreground" : "text-muted-foreground")}>Xác nhận</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {postedJob ? (
@@ -1469,7 +1467,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
           <Card className="border-emerald-100 shadow-2xl shadow-emerald-500/10 overflow-hidden bg-white dark:bg-zinc-900">
             <div className="h-2 bg-gradient-to-r from-agro-green to-emerald-400 w-full" />
             <div className="p-8 md:p-12 text-center space-y-6">
-              <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 mb-2 relative">
+              <div className="inline-flex items-center justify-center h-20 w-20 r ounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 mb-2 relative">
                 <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-20" />
                 <CheckCheck className="h-10 w-10 relative z-10" />
               </div>
@@ -1513,7 +1511,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           {step === 1 ? (
-            <div className="space-y-8 max-w-4xl mx-auto">
+            <div className="space-y-8 max-w-7xl mx-auto">
               {/* Card thông tin */}
               <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
                 <CardHeader className="bg-muted/10 pb-0">
@@ -1688,22 +1686,22 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                           <Input value={contractEndDate} placeholder="dd/mm/yyyy" readOnly className="bg-muted/30" />
                         </div>
                       </div>
-                        <div className="space-y-2 border-t pt-4">
-                          <div className="flex justify-between text-sm">
-                            <span>Tiền công</span>
-                          </div>
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={income}
-                              onChange={(e) => setIncome(formatThousandsWithDots(e.target.value))}
-                              className="pr-12 text-lg font-medium text-teal-700 dark:text-teal-400"
-                              placeholder="300.000"
-                            />
-                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">VNĐ</span>
-                          </div>
+                      <div className="space-y-2 border-t pt-4">
+                        <div className="flex justify-between text-sm">
+                          <span>Tiền công</span>
                         </div>
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={income}
+                            onChange={(e) => setIncome(formatThousandsWithDots(e.target.value))}
+                            className="pr-12 text-lg font-medium text-teal-700 dark:text-teal-400"
+                            placeholder="300.000"
+                          />
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">VNĐ</span>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">

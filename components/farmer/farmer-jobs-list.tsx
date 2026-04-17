@@ -740,28 +740,35 @@ export function FarmerJobsList() {
                     )}
                   </div>
 
-                  <Badge variant="secondary" className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800">{job.jobSkillRequirements?.[0]?.name ?? job.requiredSkills ?? "Nông nghiệp"}</Badge>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {job.jobSkillRequirements?.[0]?.name ?? job.requiredSkills ?? "Nông nghiệp"}
+                    </Badge>
+                    <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      {job.jobTypeId === 1 ? "Khoán" : job.jobTypeId === 2 ? "Ngày" : "Khác"}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed max-w-4xl">{job.description || "Không có mô tả chi tiết."}</p>
 
-                  <div className={`grid gap-y-3 text-sm ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2" : "flex flex-wrap gap-x-6"}`}>
-                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-2 text-sm" : "flex flex-wrap items-center gap-x-6 gap-y-3 text-sm"}>
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0">
                       <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
-                      <span className={`truncate ${viewMode === "grid" ? "" : "max-w-50 sm:max-w-xs"}`} title={job.address}>{job.address}</span>
+                      <span className={`truncate ${viewMode === "grid" ? "" : "max-w-xs lg:max-w-xl"}`} title={job.address}>{job.address}</span>
                     </div>
-                    <div className="flex items-center gap-2 font-medium text-primary">
+                    <div className="flex items-center gap-2 font-medium text-primary shrink-0">
                       <Banknote className="h-4 w-4 shrink-0" />
                       <span className="truncate">{formatCurrency(job.wageAmount)}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 shrink-0">
                       <Users className="h-4 w-4 shrink-0 text-amber-500" />
                       <span className="truncate">{job.workersAccepted}/{job.workersNeeded} người</span>
                     </div>
                   </div>
 
                   {normalizeStatus(job.statusId, job.startDate) !== "completed" && (
-                    <div className={`max-w-md bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 mt-2 ${viewMode === "grid" ? "w-full" : ""}`}>
+                    <div className={`bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 mt-2 w-full ${viewMode === "grid" ? "max-w-md" : "max-w-xl"}`}>
                       <div className="mb-2 flex items-center justify-between text-xs font-medium">
-                        <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Tiến độ</span>
+                        <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Tiến độ tuyển dụng</span>
                         <span className="text-primary">
                           {Math.round(job.workersNeeded > 0 ? (job.workersAccepted / job.workersNeeded) * 100 : 0)}%
                         </span>

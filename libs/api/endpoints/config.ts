@@ -47,6 +47,7 @@ export const API_ENDPOINTS = {
     JOB_APPLICATIONS: '/job/application',
     JOB_APPLICATIONS_BY_POST: (jobPostId: string) => `/job/application/post/${jobPostId}`,
     JOB_APPLICATIONS_BY_FARMER: `/job/application/farmer`,
+    WORKERS_PER_DAY: (id: string) => `/job/post/${id}/workers-per-day`,
     APPLICATION_DETAIL: (id: string) => `/job/application/${id}`,
     RESPOND_APPLICANT: (id: string) => `/job/application/respond/${id}`,
     CANCEL_APPLICATION: (id: string) => `/job/application/cancel/farmer/${id}`,

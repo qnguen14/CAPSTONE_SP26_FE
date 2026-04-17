@@ -194,6 +194,12 @@ export default function FarmerJobDetailPage() {
   const [isSubmittingRating, setIsSubmittingRating] = useState(false)
   const [ratingError, setRatingError] = useState<string | null>(null)
   const [ratedByWorkerId, setRatedByWorkerId] = useState<Record<string, RatingDTO>>({})
+  const [workersPerDay, setWorkersPerDay] = useState<{ date: string; acceptedWorkerCount: number }[]>([])
+  const [isLoadingWorkersPerDay, setIsLoadingWorkersPerDay] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "cancel-application" | "auto-accept-application" | "approve-job-detail"
+    applicationId?: string
+  } | null>(null)
 
   const redirectIfDraftJob = (jobData: Job) => {
     if (jobData.statusId === JOB_POST_STATUS.Draft) {
@@ -587,6 +593,74 @@ export default function FarmerJobDetailPage() {
     }
   }
 
+  const requestCancelApplication = (applicationId: string) => {
+    setConfirmAction({ type: "cancel-application", applicationId })
+  }
+
+  const requestAutoAccept = (applicationId: string) => {
+    setConfirmAction({ type: "auto-accept-application", applicationId })
+  }
+
+  const requestApproveJobDetail = () => {
+    setConfirmAction({ type: "approve-job-detail" })
+  }
+
+  const isConfirmActionLoading =
+    (confirmAction?.type === "cancel-application" && !!cancellingApplicationId) ||
+    (confirmAction?.type === "auto-accept-application" && !!autoAcceptingId) ||
+    (confirmAction?.type === "approve-job-detail" && isApprovingDetail)
+
+  const confirmDialogCopy = useMemo(() => {
+    switch (confirmAction?.type) {
+      case "cancel-application":
+        return {
+          title: "Xác nhận hủy ứng tuyển",
+          description: "Bạn có chắc muốn hủy hồ sơ ứng tuyển này không? Ứng viên sẽ không còn ở trạng thái đã nhận.",
+          confirmLabel: "Xác nhận hủy",
+          confirmClassName: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        }
+      case "auto-accept-application":
+        return {
+          title: "Xác nhận duyệt ứng viên",
+          description: "Bạn có chắc muốn chấp nhận ứng viên này không?",
+          confirmLabel: "Xác nhận duyệt",
+          confirmClassName: "bg-agro-green text-white hover:bg-agro-green/90",
+        }
+      case "approve-job-detail":
+        return {
+          title: "Xác nhận phê duyệt báo cáo",
+          description: "Bạn có chắc muốn lưu và phê duyệt báo cáo công việc này không?",
+          confirmLabel: "Lưu & phê duyệt",
+          confirmClassName: "bg-agro-green text-white hover:bg-agro-green/90",
+        }
+      default:
+        return {
+          title: "Xác nhận thao tác",
+          description: "Bạn có chắc muốn tiếp tục thao tác này không?",
+          confirmLabel: "Xác nhận",
+          confirmClassName: "",
+        }
+    }
+  }, [confirmAction?.type])
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return
+
+    if (confirmAction.type === "cancel-application" && confirmAction.applicationId) {
+      await handleCancelApplication(confirmAction.applicationId)
+    }
+
+    if (confirmAction.type === "auto-accept-application" && confirmAction.applicationId) {
+      await handleAutoAccept(confirmAction.applicationId)
+    }
+
+    if (confirmAction.type === "approve-job-detail") {
+      await handleApproveJobDetail()
+    }
+
+    setConfirmAction(null)
+  }
+
   const handleStartJobButtonClick = () => {
     if (!job) return
 
@@ -674,7 +748,20 @@ export default function FarmerJobDetailPage() {
       }
     }
 
+    const loadWorkersPerDayData = async () => {
+      try {
+        setIsLoadingWorkersPerDay(true)
+        const response = await jobService.getWorkersPerDay(jobId)
+        setWorkersPerDay(response.data || [])
+      } catch (err) {
+        console.error("Failed to fetch workers per day:", err)
+      } finally {
+        setIsLoadingWorkersPerDay(false)
+      }
+    }
+
     void loadJobDetail()
+    void loadWorkersPerDayData()
   }, [jobId])
 
   useEffect(() => {
@@ -841,7 +928,14 @@ export default function FarmerJobDetailPage() {
             <div className="relative z-10 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-2 max-w-2xl">
-                  <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{job.title}</h1>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{job.title}</h1>
+                    {job.jobTypeId && (
+                      <Badge variant="secondary" className="bg-white/60 dark:bg-zinc-800/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 text-sm mt-3">
+                        {job.jobTypeId === 1 ? "Khoán" : job.jobTypeId === 2 ? "Ngày" : "Khác"}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4 text-agro-green" />
                     <span className="text-lg">{job.address}</span>
@@ -909,6 +1003,42 @@ export default function FarmerJobDetailPage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Workers Per Day (Thợ theo ngày) */}
+              {job.jobTypeId === 2 && workersPerDay.length > 0 && (
+                <Card className="border-0 shadow-sm overflow-hidden bg-white/80 dark:bg-zinc-900/80">
+                  <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3">
+                    <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                      <CalendarDays className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-lg">Số lượng nhân công từng ngày</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingWorkersPerDay ? (
+                      <div className="flex animate-pulse space-x-4">
+                        <div className="h-4 w-1/4 rounded bg-slate-200"></div>
+                        <div className="h-4 w-1/4 rounded bg-slate-200"></div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {workersPerDay.map((dayData, index) => (
+                          <div key={index} className="flex flex-col items-center justify-center p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                            <span className="text-sm font-medium text-foreground mb-1">
+                              {formatDate(dayData.date)}
+                            </span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Users className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span className={`text-lg font-bold ${dayData.acceptedWorkerCount >= job.workersNeeded ? "text-emerald-600" : "text-amber-600"}`}>
+                                {dayData.acceptedWorkerCount}/{job.workersNeeded}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Main Job Content */}
               <div className="grid gap-8">
@@ -1116,7 +1246,7 @@ export default function FarmerJobDetailPage() {
                                     variant="outline"
                                     className="h-8 w-8 p-0 rounded-lg hover:bg-agro-green/10 text-agro-green"
                                     disabled={autoAcceptingId === application.id}
-                                    onClick={() => void handleAutoAccept(application.id)}
+                                    onClick={() => requestAutoAccept(application.id)}
                                   >
                                     {autoAcceptingId === application.id ? (
                                       <RotateCw className="h-3.5 w-3.5 animate-spin" />
@@ -1158,7 +1288,7 @@ export default function FarmerJobDetailPage() {
                                       variant="outline"
                                       className="h-8 w-8 p-0 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                                       disabled={cancellingApplicationId === application.id}
-                                      onClick={() => void handleCancelApplication(application.id)}
+                                      onClick={() => requestCancelApplication(application.id)}
                                     >
                                       {cancellingApplicationId === application.id ? (
                                         <RotateCw className="h-3.5 w-3.5 animate-spin" />
@@ -1578,7 +1708,7 @@ export default function FarmerJobDetailPage() {
                       type="button"
                       variant="outline"
                       className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                      onClick={() => void handleCancelApplication(selectedApplication.id)}
+                      onClick={() => requestCancelApplication(selectedApplication.id)}
                       disabled={cancellingApplicationId === selectedApplication.id}
                     >
                       {cancellingApplicationId === selectedApplication.id ? (
@@ -1927,13 +2057,46 @@ export default function FarmerJobDetailPage() {
             {!isApprovalSectionDisabled && selectedJobDetail?.statusId !== JobStatus.Completed && (
               <Button
                 className="bg-agro-green hover:bg-agro-green/90 flex-1 sm:flex-none"
-                onClick={handleApproveJobDetail}
+                onClick={requestApproveJobDetail}
                 disabled={isApprovingDetail || !selectedJobDetail}
               >
                 {isApprovingDetail ? <RotateCw className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 Lưu & Phê duyệt
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!confirmAction}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmActionLoading) {
+            setConfirmAction(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{confirmDialogCopy.title}</DialogTitle>
+            <DialogDescription>{confirmDialogCopy.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3 sm:gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmAction(null)}
+              disabled={isConfirmActionLoading}
+            >
+              Quay lại
+            </Button>
+            <Button
+              onClick={() => void handleConfirmAction()}
+              disabled={isConfirmActionLoading}
+              className={confirmDialogCopy.confirmClassName}
+            >
+              {isConfirmActionLoading ? <RotateCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isConfirmActionLoading ? "Đang xử lý..." : confirmDialogCopy.confirmLabel}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

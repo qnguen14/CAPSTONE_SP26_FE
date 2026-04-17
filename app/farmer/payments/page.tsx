@@ -277,10 +277,15 @@ export default function PaymentsPage() {
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Quản lý thanh toán</h1>
-        <p className="text-muted-foreground">Ví tiền và thanh toán Escrow</p>
-      </div>
+      <div className="relative overflow-hidden rounded-2xl border bg-linear-to-r from-emerald-50 via-teal-50 to-cyan-50 p-5 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20">
+        <div className="pointer-events-none absolute -top-12 right-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-700/20" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Quản lý thanh toán</h1>
+            <p className="text-muted-foreground">Ví tiền và thanh toán Escrow </p>
+          </div>
+        </div>
+      </div>  
 
       {/* Balance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

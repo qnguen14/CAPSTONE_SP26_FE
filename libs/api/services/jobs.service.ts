@@ -36,6 +36,11 @@ export const jobService = {
         return response.data;
     },
 
+    getWorkersPerDay: async (id: string): Promise<ApiResponse<{ date: string; acceptedWorkerCount: number }[]>> => {
+        const response = await axiosInstance.get(API_ENDPOINTS.JOBS.WORKERS_PER_DAY(id));
+        return response.data;
+    },
+
     saveDraft: async (data: CreateJobRequest): Promise<ApiResponse<Job>> => {
         const response = await axiosInstance.post(API_ENDPOINTS.JOBS.SAVE_DRAFT, data);
         return response.data;
