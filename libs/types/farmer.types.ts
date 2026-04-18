@@ -11,6 +11,7 @@ export interface FarmerProfile {
   contactName: string;
   address?: string;
   dateOfBirth: string;
+  mainFarmId: string;
   averageRating: number;
   totalJobsPosted: number;
   totalJobsCompleted: number;

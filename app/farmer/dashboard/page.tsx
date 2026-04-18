@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { Briefcase, Users, DollarSign, Clock, ChevronRight, ChevronLeft, Star, Cloud, Droplets, Wind, X, RefreshCw, ChevronDown, Plus, Sparkles, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
@@ -21,6 +21,7 @@ import { vi } from "date-fns/locale"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { formatCurrency } from "@/libs/utils/utils"
+import { cn } from "@/libs/utils/utils"
 
 export default function FarmerDashboard() {
   const [date, setDate] = useState<Date | undefined>(undefined)
@@ -511,9 +512,13 @@ export default function FarmerDashboard() {
                   }}
                   components={{
                     DayButton: ({ day, ...props }) => (
-                      <button
+                      <CalendarDayButton
+                        day={day}
                         {...props}
-                        className={`${props.className} ${hasForecastForDate(day.date) ? 'cursor-pointer' : 'cursor-default'} mt-3`}
+                        className={cn(
+                          props.className,
+                          hasForecastForDate(day.date) ? 'cursor-pointer' : 'cursor-default'
+                        )}
                         onClick={(e) => {
                           setDate(day.date);
                           if (currentWeather && hasForecastForDate(day.date)) {
@@ -539,7 +544,7 @@ export default function FarmerDashboard() {
                         }}
                       >
                         {day.date.getDate()}
-                      </button>
+                      </CalendarDayButton>
                     ),
                   }}
                 />

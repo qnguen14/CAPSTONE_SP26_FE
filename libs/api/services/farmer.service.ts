@@ -7,7 +7,6 @@ import type {
   Job,
   CreateJobRequest,
   UpdateJobRequest,
-  Application,
   ApplicationDTO,
   FarmerProfile,
   RespondApplicationRequest,

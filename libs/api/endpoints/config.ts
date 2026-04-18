@@ -172,6 +172,19 @@ export const API_ENDPOINTS = {
     AVERAGE: (userId: string) => `/ratings/user/${userId}/average`
   },
 
+  DISPUTES: {
+    GET_ALL: '/disputes',
+    GET_MINE: '/disputes/mine',
+    GET_BY_ID: (id: string) => `/disputes/${id}`,
+    CREATE: '/disputes',
+    UPDATE: (id: string) => `/disputes/${id}`,
+    DELETE: (id: string) => `/disputes/${id}`,
+    REVIEW: (id: string) => `/disputes/${id}/review`,
+    RESOLVE: (id: string) => `/disputes/${id}/resolve`,
+    GET_COMMENTS: (id: string) => `/disputes/${id}/comments`,
+    ADD_COMMENT: (id: string) => `/disputes/${id}/comments`,
+  },
+
   UPLOAD: '/upload',
 } as const;
 
