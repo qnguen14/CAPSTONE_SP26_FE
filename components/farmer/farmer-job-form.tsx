@@ -2119,7 +2119,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
               </Card>
 
               {/* Action Bar */}
-              <div className="sticky bottom-6 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-5 border rounded-2xl shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="sticky bottom-6 z-1000 bg-white dark:bg-zinc-900/80 p-5 border rounded-2xl shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-bottom-4 duration-500">
                 <div className="text-sm flex items-center gap-2">
                   {submitError ? (
                     <span className="flex items-center text-rose-600 font-semibold bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100"><Info className="mr-2 h-4 w-4" /> {submitError}</span>
