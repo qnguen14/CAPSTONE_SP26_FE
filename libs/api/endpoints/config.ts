@@ -1,26 +1,26 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5057/api/v1',
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5057/api/v1",
   TIMEOUT: Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30000,
-  GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
-  BANKLOOKUP_API_KEY: process.env.NEXT_PUBLIC_BANKLOOKUP_API_KEY || '',
-  BANKLOOKUP_API_SECRET: process.env.NEXT_PUBLIC_BANKLOOKUP_API_SECRET || '',
-} as const;
+  GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+  BANKLOOKUP_API_KEY: process.env.NEXT_PUBLIC_BANKLOOKUP_API_KEY || "",
+  BANKLOOKUP_API_SECRET: process.env.NEXT_PUBLIC_BANKLOOKUP_API_SECRET || "",
+}
 
 // API Endpoints
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: '/login',
-    REGISTER: '/register',
-    VERIFY_REGISTER: '/verify-email',
-    RESEND_OTP: '/resend-verification',
-    GOOGLE_LOGIN: '/google-login',
-    LOGOUT: '/logout',
-    REFRESH_TOKEN: '/refresh',
-    VERIFY_EMAIL: '/verify',
-    FORGOT_PASSWORD: '/forget',
-    RESET_PASSWORD: '/reset',
+    LOGIN: "/login",
+    REGISTER: "/register",
+    VERIFY_REGISTER: "/verify-email",
+    RESEND_OTP: "/resend-verification",
+    GOOGLE_LOGIN: "/google-login",
+    LOGOUT: "/logout",
+    REFRESH_TOKEN: "/refresh",
+    VERIFY_EMAIL: "/verify",
+    FORGOT_PASSWORD: "/forget",
+    RESET_PASSWORD: "/reset",
   },
 
   // Farmer
@@ -42,7 +42,7 @@ export const API_ENDPOINTS = {
   JOBS: {
     GET: '/job/post',
     GET_BY_FARMER_HISTORY: '/job/post/farmer/history',
-    GET_BY_FARMER: `/job/post/farmer`,
+    GET_BY_FARMER: '/job/post/farmer',
     DETAIL: (id: string) => `/job/post/${id}`,
     FILTERED_JOBS: '/job/post/filter',
     FILTERED_JOBS_BY_FARMER: '/job/post/filter/farmer',
@@ -52,6 +52,36 @@ export const API_ENDPOINTS = {
     UPDATE_STATUS: (id: string) => `/job/post/update-status/${id}`,
     UPDATE_URGENCY: (id: string) => `/job/post/update-urgency/${id}`,
     DELETE: (id: string) => `/job/post/${id}`,
+    JOB_APPLICATIONS: '/job/application',
+    JOB_APPLICATIONS_BY_POST: (jobPostId: string) => `/job/application/post/${jobPostId}`,
+    JOB_APPLICATIONS_BY_FARMER: '/job/application/farmer',
+    WORKERS_PER_DAY: (id: string) => `/job/post/${id}/workers-per-day`,
+    APPLICATION_DETAIL: (id: string) => `/job/application/${id}`,
+    RESPOND_APPLICANT: (id: string) => `/job/application/respond/${id}`,
+    CANCEL_APPLICATION: (id: string) => `/job/application/cancel/farmer/${id}`,
+    SAVE_DRAFT: '/job/post/draft',
+    GET_DRAFTS: '/job/post/drafts',
+    JOB_DETAILS: '/job/detail',
+    JOB_DETAIL: (id: string) => `/job/detail/${id}`,
+    JOB_DETAILS_BY_POST: (id: string) => `/job/detail/post/${id}`,
+    APPROVE_JOB_DETAILS: (id: string) => `/job/detail/approve/${id}`,
+  },
+    DETAIL: (id: string) => `/job/post/${id}`,
+    FILTERED_JOBS: "/job/post/filter",
+    FILTERED_JOBS_BY_FARMER: "/job/post/filter/farmer",
+    CREATE: "/job/post",
+    UPDATE: (id: string) => `/job/post/${id}`,
+    CANCEL: (id: string) => `/job/post/cancel/${id}`,
+    UPDATE_STATUS: (id: string) => `/job/post/update-status/${id}`,
+    UPDATE_URGENCY: (id: string) => `/job/post/update-urgency/${id}`,
+    DELETE: (id: string) => `/job/post/${id}`,
+    JOB_APPLICATIONS: "/job/application",
+    JOB_APPLICATIONS_BY_POST: (jobPostId: string) =>
+      `/job/application/post/${jobPostId}`,
+    APPLICATION_DETAIL: (id: string) => `/job/application/${id}`,
+    RESPOND_APPLICANT: (id: string) => `/job/application/respond/${id}`,
+    SAVE_DRAFT: "/job/post/draft",
+    GET_DRAFTS: "/job/post/drafts",
     JOB_APPLICATIONS: '/job/application',
     JOB_APPLICATIONS_BY_POST: (jobPostId: string) => `/job/application/post/${jobPostId}`,
     JOB_APPLICATIONS_BY_FARMER: `/job/application/farmer`,
@@ -69,9 +99,9 @@ export const API_ENDPOINTS = {
 
   // Farm
   FARM: {
-    FARMS: '/farm',
+    FARMS: "/farm",
     FARM: (id: string) => `/farm/${id}`,
-    ADD_FARM: '/farm',
+    ADD_FARM: "/farm",
     UPDATE_FARM: (id: string) => `/farm/${id}`,
     REMOVE_FARM: (id: string) => `/farm/${id}`,
     UPLOAD_IMAGE: (id: string) => `/farm/${id}/upload-image`,
@@ -79,11 +109,13 @@ export const API_ENDPOINTS = {
 
   // Admin
   ADMIN: {
-    DASHBOARD: '/admin/dashboard',
-    USERS: '/user',
+    DASHBOARD: "/admin/dashboard",
+    USERS: "/user",
     USER_DETAIL: (id: string) => `/user/${id}`,
     UPDATE_USER: (id: string) => `/user/${id}`,
     DELETE_USER: (id: string) => `/user/${id}`,
+    WALLET_TRANSACTIONS: "/admin/wallet-transactions",
+    WALLET_STATS: "/admin/wallet/stats",
     // DISPUTES: '/admin/disputes',
     // DISPUTE_DETAIL: (id: string) => `/admin/disputes/${id}`,
     // RESOLVE_DISPUTE: (id: string) => `/admin/disputes/${id}/resolve`,
@@ -135,7 +167,7 @@ export const API_ENDPOINTS = {
     CREATE: '/payment/',
     CANCEL: (id: string) => `/payment/${id}/cancel`,
     CALLBACK: '/payment/callback',
-    VERIFY: '/payment/verify'
+    VERIFY: '/payment/verify',
   },
 
   WALLET: {
@@ -162,24 +194,7 @@ export const API_ENDPOINTS = {
     MARK_READ: '/notification/read',
     MARK_ALL_READ: '/notification/read-all',
     GET_ALL_UNREAD: '/notification/unread',
-    DELETE: (id: string) => `/notification/${id}`
-  },
-
-
-  MESSAGES: {
-    GET: '/messages',
-    SEND: '/messages',
-    READ: '/messages/read',
-    CONVERSATIONS: '/messages/conversations'
-  },
-
-  RATINGS: {
-    CREATE: `/ratings`,
-    SPECIFIC: (userId: string) => `/ratings/${userId}`,
-    BY_USER: (userId: string) => `/ratings/user/${userId}/all`,
-    GIVEN: `/ratings/user/given`,
-    RECEIVED_BY_POST: (postId: string) => `/ratings/user/received/post/${postId}`,
-    AVERAGE: (userId: string) => `/ratings/user/${userId}/average`
+    DELETE: (id: string) => `/notification/${id}`,
   },
 
   DISPUTES: {
@@ -194,8 +209,7 @@ export const API_ENDPOINTS = {
     GET_COMMENTS: (id: string) => `/disputes/${id}/comments`,
     ADD_COMMENT: (id: string) => `/disputes/${id}/comments`,
   },
-
-  UPLOAD: '/upload',
-} as const;
+  UPLOAD: '/upload'
+}
 
 export type ApiEndpoints = typeof API_ENDPOINTS;

@@ -1,82 +1,74 @@
 "use client";
 
-import { Search, Eye, X } from "lucide-react";
-import { useState } from "react";
+import { Search, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { adminJobService } from "@/libs/api/services/admin-job.service";
+import type {
+  AdminJob,
+  AdminJobListResponse,
+} from "@/libs/types/admin-job.types";
 
 export function AdminJobs() {
-  const [jobs] = useState([
-    {
-      id: 1,
-      title: "Trồng cà chua",
-      farmer: "Nguyễn Văn A",
-      worker: "Trần Thị B",
-      status: "Completed",
-      salary: "$150",
-      startDate: "2024-01-10",
-      endDate: "2024-01-20",
-    },
-    {
-      id: 2,
-      title: "Thu hoạch lúa",
-      farmer: "Lê Văn C",
-      worker: "Phạm Thị D",
-      status: "In Progress",
-      salary: "$200",
-      startDate: "2024-03-01",
-      endDate: "2024-03-15",
-    },
-    {
-      id: 3,
-      title: "Chăm sóc bò sữa",
-      farmer: "Đỗ Minh E",
-      worker: "-",
-      status: "Pending",
-      salary: "$100/ngày",
-      startDate: "2024-03-10",
-      endDate: "-",
-    },
-    {
-      id: 4,
-      title: "Trồng rau dền",
-      farmer: "Hoàng Thị F",
-      worker: "Võ Văn G",
-      status: "Completed",
-      salary: "$80",
-      startDate: "2024-02-05",
-      endDate: "2024-02-18",
-    },
-    {
-      id: 5,
-      title: "Quét vườn",
-      farmer: "Bùi Văn H",
-      worker: "Đinh Thị I",
-      status: "Cancelled",
-      salary: "$50",
-      startDate: "2024-02-20",
-      endDate: "2024-02-21",
-    },
-  ]);
-
+  const [jobs, setJobs] = useState<AdminJob[]>([]);
+  const [summary, setSummary] = useState<{
+    total: number;
+    active: number;
+    completed: number;
+    completionRate: number;
+  } | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredJobs = jobs.filter((job) => {
-    const matchSearch = job.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === "All" || job.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  // Tính tổng số trang
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  useEffect(() => {
+    let ignore = false;
+    async function fetchJobs() {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: any = { page, limit };
+        if (searchTerm) params.search = searchTerm;
+        if (statusFilter !== "All") params.status = statusFilter;
+        const res: AdminJobListResponse = await adminJobService.getJobs(params);
+        if (!ignore) {
+          setJobs(res.data);
+          setSummary(res.summary);
+          setTotal(res.total);
+        }
+      } catch (e: any) {
+        setError(e?.message || "Lỗi tải dữ liệu");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchJobs();
+    return () => {
+      ignore = true;
+    };
+  }, [page, limit, searchTerm, statusFilter]);
 
   const statusColors: Record<string, string> = {
     Completed: "bg-green-100 text-green-700",
-    "In Progress": "bg-[#10B981]/20 text-[#10B981]",
+    InProgress: "bg-[#10B981]/20 text-[#10B981]",
     Pending: "bg-[#D28228]/20 text-[#D28228]",
     Cancelled: "bg-destructive/20 text-destructive",
   };
 
   return (
     <div className="p-8 space-y-6">
+      {loading && (
+        <div className="text-center text-muted-foreground">
+          Đang tải dữ liệu...
+        </div>
+      )}
+      {error && <div className="text-center text-destructive">{error}</div>}
       <div>
         <h1 className="text-3xl font-bold text-foreground">
           Quản lý công việc
@@ -97,20 +89,26 @@ export function AdminJobs() {
             type="text"
             placeholder="Tìm kiếm công việc..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setSearchTerm(e.target.value);
+            }}
             className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-card text-foreground placeholder-muted-foreground"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setPage(1);
+            setStatusFilter(e.target.value);
+          }}
           className="px-4 py-2 border border-border rounded-lg bg-card text-foreground"
         >
-          <option>All</option>
-          <option>Completed</option>
-          <option>In Progress</option>
-          <option>Pending</option>
-          <option>Cancelled</option>
+          <option value="All">All</option>
+          <option value="Completed">Completed</option>
+          <option value="InProgress">In Progress</option>
+          <option value="Pending">Pending</option>
+          <option value="Cancelled">Cancelled</option>
         </select>
       </div>
 
@@ -144,7 +142,17 @@ export function AdminJobs() {
               </tr>
             </thead>
             <tbody>
-              {filteredJobs.map((job) => (
+              {jobs.length === 0 && !loading && (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Không có dữ liệu
+                  </td>
+                </tr>
+              )}
+              {jobs.map((job) => (
                 <tr
                   key={job.id}
                   className="border-b border-border hover:bg-muted/50 transition-colors"
@@ -153,10 +161,14 @@ export function AdminJobs() {
                     <p className="font-semibold text-foreground">{job.title}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-muted-foreground">{job.farmer}</p>
+                    <p className="text-muted-foreground">
+                      {job.farmer?.fullName || "-"}
+                    </p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-foreground">{job.worker}</p>
+                    <p className="text-foreground">
+                      {job.worker?.fullName || "-"}
+                    </p>
                   </td>
                   <td className="px-6 py-4">
                     <span
@@ -167,7 +179,7 @@ export function AdminJobs() {
                   </td>
                   <td className="px-6 py-4">
                     <p className="font-semibold text-foreground">
-                      {job.salary}
+                      {job.salary?.toLocaleString?.() || "-"}
                     </p>
                   </td>
                   <td className="px-6 py-4">
@@ -183,7 +195,7 @@ export function AdminJobs() {
                       >
                         <Eye size={18} className="text-primary" />
                       </button>
-                      {job.status === "In Progress" && (
+                      {job.status === "InProgress" && (
                         <button
                           className="p-2 hover:bg-muted rounded-lg transition-colors"
                           title="Hủy công việc"
@@ -200,29 +212,98 @@ export function AdminJobs() {
         </div>
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border px-6 py-4 bg-card rounded-b-lg">
+          <p className="text-sm text-muted-foreground">
+            {/* Tổng{" "}
+            <span className="font-semibold text-foreground">
+              {total.toLocaleString()}
+            </span>{" "}
+            công việc */}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-lg border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm text-foreground">
+              Trang <span className="font-semibold">{page}</span> / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-lg border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-card rounded-lg border border-border p-6">
           <p className="text-muted-foreground text-sm">Tổng công việc</p>
-          <p className="text-3xl font-bold text-foreground mt-2">1,245</p>
+          <p className="text-3xl font-bold text-foreground mt-2">
+            {summary?.total ?? "-"}
+          </p>
           <p className="text-sm text-muted-foreground mt-2">Tất cả thời gian</p>
         </div>
         <div className="bg-card rounded-lg border border-border p-6">
           <p className="text-muted-foreground text-sm">Đang hoạt động</p>
-          <p className="text-3xl font-bold text-[#10B981] mt-2">342</p>
-          <p className="text-sm text-green-600 mt-2">27.5% của tổng</p>
+          <p className="text-3xl font-bold text-[#10B981] mt-2">
+            {summary?.active ?? "-"}
+          </p>
+          <p className="text-sm text-green-600 mt-2">
+            {summary && summary.total
+              ? `${Math.round((summary.active / summary.total) * 100)}% của tổng`
+              : "-"}
+          </p>
         </div>
         <div className="bg-card rounded-lg border border-border p-6">
           <p className="text-muted-foreground text-sm">Hoàn thành</p>
-          <p className="text-3xl font-bold text-primary mt-2">680</p>
-          <p className="text-sm text-green-600 mt-2">54.6% của tổng</p>
+          <p className="text-3xl font-bold text-primary mt-2">
+            {summary?.completed ?? "-"}
+          </p>
+          <p className="text-sm text-green-600 mt-2">
+            {summary && summary.total
+              ? `${Math.round((summary.completed / summary.total) * 100)}% của tổng`
+              : "-"}
+          </p>
         </div>
         <div className="bg-card rounded-lg border border-border p-6">
           <p className="text-muted-foreground text-sm">Tỷ lệ hoàn thành</p>
-          <p className="text-3xl font-bold text-primary mt-2">94.2%</p>
+          <p className="text-3xl font-bold text-primary mt-2">
+            {summary?.completionRate ?? "-"}
+          </p>
           <p className="text-sm text-green-600 mt-2">Cao hơn mục tiêu</p>
         </div>
       </div>
+
+      {/* Pagination */}
+      {/* <div className="flex justify-end items-center gap-2 mt-4">
+        <button
+          className="px-3 py-1 rounded border border-border bg-card text-foreground disabled:opacity-50"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1 || loading}
+        >
+          Trang trước
+        </button>
+        <span className="text-sm">Trang {page}</span>
+        <button
+          className="px-3 py-1 rounded border border-border bg-card text-foreground disabled:opacity-50"
+          onClick={() =>
+            setPage((p) => (total && page * limit < total ? p + 1 : p))
+          }
+          disabled={loading || (total && page * limit >= total)}
+        >
+          Trang sau
+        </button>
+      </div> */}
     </div>
   );
 }
