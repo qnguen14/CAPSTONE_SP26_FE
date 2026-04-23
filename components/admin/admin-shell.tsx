@@ -34,8 +34,8 @@ export function AdminShell({ initialPage = "dashboard" }: AdminShellProps) {
         return <AdminTransactions />;
       case "disputes":
         return <AdminDisputes />;
-      case "config":
-        return <AdminSettings />;
+      // case "config":
+      //   return <AdminSettings />;
       case "dashboard":
       default:
         return <AdminDashboard />;
@@ -43,7 +43,7 @@ export function AdminShell({ initialPage = "dashboard" }: AdminShellProps) {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background adshell">
       <AdminSidebar currentPage={currentPage} onPageChange={setCurrentPage} />
       <main className="flex-1 overflow-auto">{renderPage()}</main>
     </div>

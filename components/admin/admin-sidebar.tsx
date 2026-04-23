@@ -7,7 +7,11 @@ import {
   AlertCircle,
   Settings,
   Home,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/libs/stores/auth.store";
+import { authService } from "@/libs/api";
 
 interface AdminSidebarProps {
   currentPage: string;
@@ -15,13 +19,26 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ currentPage, onPageChange }: AdminSidebarProps) {
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error("Logout API error", err);
+    } finally {
+      logout();
+      router.push("/auth/login");
+    }
+  };
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "users", label: "Quản lý người dùng", icon: Users },
     { id: "jobs", label: "Quản lý công việc", icon: Briefcase },
     { id: "transactions", label: "Giao dịch & Ví", icon: DollarSign },
     { id: "disputes", label: "Tranh chấp", icon: AlertCircle },
-    { id: "config", label: "Cấu hình hệ thống", icon: Settings },
+    // { id: "config", label: "Cấu hình hệ thống", icon: Settings },
   ];
 
   return (
@@ -59,12 +76,14 @@ export function AdminSidebar({ currentPage, onPageChange }: AdminSidebarProps) {
           );
         })}
       </nav>
-
       <div className="p-4 border-t border-[#2D6641]">
-        <div className="bg-white/10 rounded-lg p-3">
-          <p className="text-xs text-white/70 mb-2">Phiên bản hệ thống</p>
-          <p className="font-semibold text-sm">v1.0.0</p>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg hover:bg-white/10"
+        >
+          <LogOut size={18} />
+          <span>Đăng xuất</span>
+        </button>
       </div>
     </aside>
   );
