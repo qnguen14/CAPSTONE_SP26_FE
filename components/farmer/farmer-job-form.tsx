@@ -2172,7 +2172,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Nhân công</p>
-                      <div className="flex items-center text-xl font-bold"><Users className="mr-2 h-5 w-5 text-amber-500" /> {workersNeededNumber} người</div>
+                      <div className="flex items-center text-xl font-bold"><Users className="mr-2 h-5 w-5 text-amber-500" /> {workersNeededNumber} người/ngày</div>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Khu vực</p>
