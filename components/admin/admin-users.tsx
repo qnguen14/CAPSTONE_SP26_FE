@@ -303,14 +303,14 @@ export function AdminUsers() {
                             <Unlock size={18} className="text-[#10B981]" />
                           )}
                         </button>
-                        <button
+                        {/* <button
                           disabled={actionLoading === user.id}
                           onClick={() => handleDelete(user)}
                           className="p-2 hover:bg-muted rounded-lg transition-colors disabled:opacity-50"
                           title="Xóa tài khoản"
                         >
                           <Trash2 size={18} className="text-destructive" />
-                        </button>
+                        </button> */}
                       </div>
                     </td>
                   </tr>
