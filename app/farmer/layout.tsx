@@ -226,7 +226,7 @@ export default function FarmerLayout({
       {/* Top Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-border shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
-          <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 lg:gap-3 xl:gap-6">
+          <div className="grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-3 xl:gap-6">
             {/* Logo */}
             <Link href="/farmer/dashboard" className="flex items-center gap-2 justify-self-start">
               <div className="w-10 h-10 rounded-full flex items-center justify-center">
@@ -239,7 +239,7 @@ export default function FarmerLayout({
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden xl:flex justify-self-center">
+            <div className="hidden xl:flex justify-center">
               <nav className="flex items-center gap-4 rounded-full border border-border/70 bg-background/70 p-1 shadow-sm">
                 {navItems.map((item) => {
                   const isActive = item.href === "/farmer"
