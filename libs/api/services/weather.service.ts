@@ -34,8 +34,9 @@ class WeatherService {
       const response = await axiosInstance.get<{ data: BeWeatherData }>(`${WEATHER_BASE}/me`);
       return this.unwrapWeatherResponse(response);
     } catch (error: any) {
-      // Fallback to default city if user has no address/profile
-      if (error?.response?.status === 400) {
+      // Fallback to default city when `/me` cannot resolve weather.
+      // 400: user profile/address issues, 500: backend geocoding or config/runtime issues.
+      if ([400, 500].includes(error?.response?.status)) {
         console.warn("Failed to get weather by user address, falling back to default city.");
         return this.getCurrentWeather();
       }
