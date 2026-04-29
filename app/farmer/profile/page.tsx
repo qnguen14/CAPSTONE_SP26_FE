@@ -383,7 +383,7 @@ export default function FarmerProfilePage() {
                             </div>
                             <div className="grid gap-1">
                                 <span className="text-sm font-medium text-slate-500">Loại hình</span>
-                                <span className="text-base text-slate-900">{defaultFarmInfo?.farmTypeName || "—"}</span>
+                                <span className="text-base text-slate-900"> {defaultFarmInfo?.farmType === 1 ? "Chăn nuôi" : defaultFarmInfo?.farmType === 2 ? "Trồng trọt" : "Nuôi trồng thủy hải sản"}</span>
                             </div>
                          
                             <div className="grid gap-1">
