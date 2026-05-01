@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, ArrowUpRight, Banknote, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight, User, Users } from "lucide-react"
 import { eachDayOfInterval, format, isSameDay, startOfDay } from "date-fns"
@@ -223,8 +223,29 @@ const resolveJobCategoryId = (job: Job | null | undefined) => {
   return DEFAULT_JOB_CATEGORY_ID
 }
 
+const resolveFarmId = (job: Job | null | undefined) => {
+  if (!job) {
+    return DEFAULT_FARM_ID
+  }
+
+  const directFarmId = (job as any).farmId?.toString().trim()
+
+  if (directFarmId) {
+    return directFarmId
+  }
+
+  const nestedFarmId = job.farm?.farmId?.toString().trim() || (job.farm as any)?.id?.toString().trim()
+
+  if (nestedFarmId) {
+    return nestedFarmId
+  }
+
+  return DEFAULT_FARM_ID
+}
+
 export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [isFarmManagerDialogOpen, setIsFarmManagerDialogOpen] = useState(false)
   const isEditMode = mode === "edit" && Boolean(jobId)
@@ -300,6 +321,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [postedJob, setPostedJob] = useState<PostedJobPreview | null>(null)
   const postedJobRef = useRef<PostedJobPreview | null>(null)
+  const isResumingAfterTopUpRef = useRef(false)
 
   useEffect(() => {
     postedJobRef.current = postedJob
@@ -614,7 +636,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         rememberSkillLabels(existingJob.jobSkillRequirements ?? [])
         setSelectedSkillIds((existingJob.jobSkillRequirements ?? []).map((skill) => skill.id).filter(Boolean))
         setSelectedJobCategoryId(resolveJobCategoryId(existingJob))
-        setSelectedFarmId(existingJob.farm?.farmId || (existingJob.farm as any)?.id || DEFAULT_FARM_ID)
+        setSelectedFarmId(resolveFarmId(existingJob))
         setIsUrgent(Boolean(existingJob.isUrgent))
 
         const normalizedStartTime = existingJob.startTime ? existingJob.startTime.slice(0, 5) : "09:00"
@@ -890,6 +912,29 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     setDailySelectionNotice(null)
   }
 
+  const validateContractDateRange = (startDateValue: string, endDateValue: string) => {
+    if (!startDateValue || !endDateValue) {
+      return "Vui lòng chọn ngày bắt đầu và kết thúc cho công việc khoán."
+    }
+
+    const parsedStartDate = parseDDMMYYYYToDate(startDateValue)
+    const parsedEndDate = parseDDMMYYYYToDate(endDateValue)
+
+    if (!parsedStartDate || !parsedEndDate) {
+      return "Vui lòng nhập ngày theo định dạng dd/mm/yyyy."
+    }
+
+    if (isSameDay(parsedStartDate, parsedEndDate)) {
+      return "Ngày kết thúc phải lớn hơn ngày bắt đầu."
+    }
+
+    if (parsedEndDate < parsedStartDate) {
+      return "Ngày kết thúc phải lớn hơn ngày bắt đầu."
+    }
+
+    return null
+  }
+
   const validateBeforePreview = () => {
     if (!title.trim()) {
       return "Vui lòng nhập tiêu đề công việc."
@@ -916,19 +961,9 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     }
 
     if (scheduleType === "contract") {
-      if (!contractStartDate || !contractEndDate) {
-        return "Vui lòng chọn ngày bắt đầu và kết thúc cho công việc khoán."
-      }
-
-      const parsedStartDate = parseDDMMYYYYToDate(contractStartDate)
-      const parsedEndDate = parseDDMMYYYYToDate(contractEndDate)
-
-      if (!parsedStartDate || !parsedEndDate) {
-        return "Vui lòng nhập ngày theo định dạng dd/mm/yyyy."
-      }
-
-      if (parsedEndDate < parsedStartDate) {
-        return "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu."
+      const contractDateValidationError = validateContractDateRange(contractStartDate, contractEndDate)
+      if (contractDateValidationError) {
+        return contractDateValidationError
       }
     }
 
@@ -1085,7 +1120,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       const savedJobUnitIncome = savedJob.wageAmount ?? incomeNumber
       const savedJobDailyDaysCount =
         scheduleType === "daily"
-          ? ((savedJob.jobPostDays?.length ?? 0) > 0 ? savedJob.jobPostDays.length : selectedDailyDaysCount)
+          ? ((savedJob.jobPostDays?.length ?? 0) > 0 ? (savedJob.jobPostDays?.length ?? selectedDailyDaysCount) : selectedDailyDaysCount)
           : 1
       const savedJobWorkersNeeded =
         scheduleType === "daily"
@@ -1128,23 +1163,49 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
           errorMessage = "Số dư ví không đủ để đăng tin. Vui lòng nạp thêm tiền vào ví."
 
           let isDraftSaved = false
+          let savedDraftId: string | null = null
+          let autoSaveErrorMessage: string | null = null
           try {
-            await jobService.saveDraft(buildDraftPayload())
-            setIsDirty(false)
-            isDirtyRef.current = false
-            isDraftSaved = true
+            const contractDateValidationError =
+              scheduleType === "contract"
+                ? validateContractDateRange(contractStartDate, contractEndDate)
+                : null
+
+            if (contractDateValidationError) {
+              autoSaveErrorMessage = contractDateValidationError
+            } else {
+              const savedDraftResponse = await jobService.saveDraft(buildDraftPayload())
+              savedDraftId = savedDraftResponse.data?.id ?? null
+              setIsDirty(false)
+              isDirtyRef.current = false
+              isDraftSaved = true
+            }
           } catch (saveDraftError) {
             console.error(saveDraftError)
           }
 
           toast({
             title: "Số dư không đủ",
-            description: isDraftSaved
-              ? "Bản nháp đã được lưu. Hệ thống đang chuyển hướng đến trang nạp tiền..."
-              : "Không đủ số dư và chưa lưu được bản nháp. Hệ thống đang chuyển hướng đến trang nạp tiền...",
+            description: autoSaveErrorMessage
+              ? `Không thể tự động lưu bản nháp: ${autoSaveErrorMessage} Hệ thống đang chuyển hướng đến trang nạp tiền...`
+              : isDraftSaved
+                ? "Bản nháp đã được lưu. Hệ thống đang chuyển hướng đến trang nạp tiền..."
+                : "Không đủ số dư và chưa lưu được bản nháp. Hệ thống đang chuyển hướng đến trang nạp tiền...",
             variant: "destructive",
           })
-          router.push("/farmer/payments")
+
+          const paymentRedirectParams = new URLSearchParams({
+            openTopUp: "1",
+            source: "create-job",
+            returnTo: "/farmer/create-job",
+            returnStep: "confirm",
+          })
+
+          if (savedDraftId) {
+            paymentRedirectParams.set("draftId", savedDraftId)
+          }
+
+          router.push(`/farmer/payments?${paymentRedirectParams.toString()}`)
         } else {
           errorMessage = apiMessage
         }
@@ -1167,7 +1228,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     setRequirements(["Có sức khỏe tốt"])
     setNewRequirement("")
     setSelectedSkillIds([])
-    setSelectedFarmId(farms[0]?.farmId ?? DEFAULT_FARM_ID)
+    setSelectedFarmId(farms[0]?.farmId || (farms[0] as any)?.id || DEFAULT_FARM_ID)
     setSelectedJobCategoryId(jobCategories[0]?.id ?? DEFAULT_JOB_CATEGORY_ID)
     setBenefits(["Bao ăn"])
     setNewBenefit("")
@@ -1210,7 +1271,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
     return {
       skillIds: selectedSkillIds,
-      farmId: selectedFarmId || DEFAULT_FARM_ID,
+      farmId: selectedFarmId?.trim() || DEFAULT_FARM_ID,
       jobCategoryId: selectedJobCategoryId || DEFAULT_JOB_CATEGORY_ID,
       jobTypeId: scheduleType === "daily" ? JOB_TYPE_DAILY_ID : JOB_TYPE_CONTRACT_ID,
       title: title.trim() || "(Bản nháp)",
@@ -1246,10 +1307,26 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   ])
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
+    const contractDateValidationError =
+      scheduleType === "contract"
+        ? validateContractDateRange(contractStartDate, contractEndDate)
+        : null
+
+    if (contractDateValidationError) {
+      setSubmitError(contractDateValidationError)
+      toast({
+        title: "Không thể lưu bản nháp",
+        description: contractDateValidationError,
+        variant: "destructive",
+      })
+      return false
+    }
+
     try {
       setIsSavingDraft(true)
       const payload = buildDraftPayload()
       await jobService.saveDraft(payload)
+      setSubmitError(null)
       setIsDirty(false)
       isDirtyRef.current = false
       toast({
@@ -1267,9 +1344,22 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     } finally {
       setIsSavingDraft(false)
     }
-  }, [buildDraftPayload, toast])
+  }, [
+    buildDraftPayload,
+    contractEndDate,
+    contractStartDate,
+    scheduleType,
+    toast,
+    validateContractDateRange,
+  ])
 
-  const loadDraft = useCallback((draft: Job) => {
+  const loadDraft = useCallback((
+    draft: Job,
+    options?: {
+      step?: 1 | 2
+      showToast?: boolean
+    },
+  ) => {
     setTitle(draft.title ?? "")
     setDescription(extractEditableDescription(draft.description ?? ""))
     setIncome(formatThousandsWithDots(String(draft.wageAmount ?? "")))
@@ -1280,7 +1370,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     rememberSkillLabels(draft.jobSkillRequirements ?? [])
     setSelectedSkillIds((draft.jobSkillRequirements ?? []).map((s) => s.id).filter(Boolean))
     setSelectedJobCategoryId(resolveJobCategoryId(draft))
-    setSelectedFarmId(draft.farm?.farmId || (draft.farm as any)?.id || DEFAULT_FARM_ID)
+    setSelectedFarmId(resolveFarmId(draft))
     setIsUrgent(Boolean(draft.isUrgent))
     setDailyStartTime(draft.startTime?.slice(0, 5) ?? "09:00")
     setDailyEndTime(draft.endTime?.slice(0, 5) ?? "17:00")
@@ -1309,9 +1399,66 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       setContractEndDate(draft.endDate ? formatDateDDMMYYYY(draft.endDate) : "")
     }
 
-    setStep(1)
-    toast({ title: "Đã tải bản nháp", description: `"${draft.title}" đã được tải vào form.` })
+    setStep(options?.step ?? 1)
+
+    if (options?.showToast !== false) {
+      toast({ title: "Đã tải bản nháp", description: `"${draft.title}" đã được tải vào form.` })
+    }
   }, [toast, rememberSkillLabels])
+
+  useEffect(() => {
+    if (isEditMode || isResumingAfterTopUpRef.current) {
+      return
+    }
+
+    if (searchParams.get("resumeFromTopUp") !== "1") {
+      return
+    }
+
+    const draftId = searchParams.get("draftId")?.trim()
+    const shouldGoToConfirmStep = (searchParams.get("step") || "").toLowerCase() === "confirm"
+
+    isResumingAfterTopUpRef.current = true
+
+    const finalizeResume = () => {
+      router.replace("/farmer/create-job")
+    }
+
+    if (!draftId) {
+      setSubmitError("Nạp tiền thành công. Vui lòng kiểm tra lại thông tin trước khi đăng tin.")
+      if (shouldGoToConfirmStep) {
+        setStep(2)
+      }
+      finalizeResume()
+      return
+    }
+
+    const hydrateDraftAfterTopUp = async () => {
+      try {
+        setIsLoadingExistingJob(true)
+        const response = await jobService.getJobDetail(draftId)
+        loadDraft(response.data as Job, {
+          step: shouldGoToConfirmStep ? 2 : 1,
+          showToast: false,
+        })
+        setSubmitError(null)
+        setIsDirty(false)
+        isDirtyRef.current = false
+
+        toast({
+          title: "Nạp tiền thành công",
+          description: "Hệ thống đã khôi phục bản nháp. Bạn có thể xác nhận đăng tin ngay.",
+        })
+      } catch {
+        setSubmitError("Đã nạp tiền nhưng không thể khôi phục bản nháp. Vui lòng kiểm tra lại thông tin trước khi đăng tin.")
+      } finally {
+        setIsLoadingExistingJob(false)
+        finalizeResume()
+      }
+    }
+
+    void hydrateDraftAfterTopUp()
+  }, [isEditMode, loadDraft, router, searchParams, toast])
 
   // ─── Navigation interception ──────────────────────────────────────────────
 
@@ -1796,7 +1943,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                             value={income}
                             onChange={(e) => setIncome(formatThousandsWithDots(e.target.value))}
                             className="pr-12 text-lg font-medium text-teal-700 dark:text-teal-400"
-                            placeholder="300.000"
+                            placeholder="Điền số tiền bạn muốn"
                           />
                           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">VNĐ</span>
                         </div>
