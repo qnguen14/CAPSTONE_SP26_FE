@@ -300,6 +300,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [isJobCategoryPopoverOpen, setIsJobCategoryPopoverOpen] = useState(false)
 
   const [farms, setFarms] = useState<GetFarmResponse[]>([])
+  const [allFarms, setAllFarms] = useState<GetFarmResponse[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState(DEFAULT_FARM_ID)
   const [isLoadingFarms, setIsLoadingFarms] = useState(true)
   const [isFarmPopoverOpen, setIsFarmPopoverOpen] = useState(false)
@@ -408,6 +409,57 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       return next
     })
   }, [])
+
+  // Helper to normalize strings for diacritic-insensitive comparison
+  const normalizeStr = (s = "") =>
+    s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim()
+
+  // Filter farms when job category changes
+  useEffect(() => {
+    if (!allFarms.length) {
+      return
+    }
+
+    if (!selectedJobCategoryId || selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID) {
+      setFarms(allFarms)
+      return
+    }
+
+    const categoryNorm = normalizeStr(getJobCategoryLabel(selectedJobCategoryId))
+
+    const filtered = allFarms.filter((f) => {
+      if (!f) return false
+
+      // Match by farmTypeId or farmId directly
+      if ((f as any).farmTypeId && String((f as any).farmTypeId) === String(selectedJobCategoryId)) {
+        return true
+      }
+
+      if (String(f.farmId) === String(selectedJobCategoryId)) {
+        return true
+      }
+
+      // Match by farmTypeName using diacritic-insensitive comparison
+      const farmTypeNameNorm = normalizeStr(f.farmTypeName)
+      if (farmTypeNameNorm.includes(categoryNorm)) {
+        return true
+      }
+
+      return false
+    })
+
+    // Set filtered list even if empty (shows "no farms" message to user)
+    setFarms(filtered)
+    
+    if (filtered.length) {
+      setSelectedFarmId((current) => {
+        const exists = filtered.some((ff) => (ff.farmId || (ff as any).id) === current)
+        if (exists) return current
+        const first = filtered[0]
+        return first?.farmId || (first as any)?.id || DEFAULT_FARM_ID
+      })
+    }
+  }, [selectedJobCategoryId, allFarms])
 
   const getSkillLabel = (skillId: string) => {
     const rememberedLabel = skillLabelsById[skillId]
@@ -742,6 +794,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
             ? payload.data
             : []
 
+        setAllFarms(fetchedFarms)
         setFarms(fetchedFarms)
         setSelectedFarmId((currentSelected) => {
           if (currentSelected && currentSelected !== DEFAULT_FARM_ID) {
