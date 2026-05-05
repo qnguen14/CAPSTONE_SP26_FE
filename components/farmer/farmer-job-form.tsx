@@ -834,7 +834,12 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     }
 
     setContractStartDate(format(range.from, "dd/MM/yyyy"))
-    setContractEndDate(range.to ? format(range.to, "dd/MM/yyyy") : "")
+    // Only set an end date when the picker provides a distinct end different from the start.
+    if (range.to && !isSameDay(range.from, range.to)) {
+      setContractEndDate(format(range.to, "dd/MM/yyyy"))
+    } else {
+      setContractEndDate("")
+    }
   }
 
   const toggleRangeSelectionMode = () => {
