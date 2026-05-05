@@ -1296,6 +1296,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     setContractEndDate("")
     setDailyStartTime("09:00")
     setDailyEndTime("17:00")
+    setDailyWorkersNeededMap({})
     clearAllSelectedDailyDates()
     setSubmitError(null)
     setPostedJob(null)
@@ -1327,6 +1328,26 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       endTime = formatTimeOnly(dailyEndTime)
     }
 
+    const draftJobPostDays =
+      scheduleType === "daily"
+        ? normalizedSelectedDailyDates.map((d) => {
+          const workDate = toDateOnlyFromDate(d)
+          const perDayValue = dailyWorkersNeededMap[workDate]
+          const parsedPerDay = perDayValue ? Number.parseInt(perDayValue, 10) : workersNeededNumber
+          return {
+            workDate,
+            workersNeeded: !Number.isNaN(parsedPerDay) && parsedPerDay > 0 ? parsedPerDay : 1,
+          }
+        })
+        : []
+
+    const draftWorkersNeeded =
+      scheduleType === "daily"
+        ? (draftJobPostDays.length
+          ? Math.max(...draftJobPostDays.map((day) => day.workersNeeded))
+          : Math.max(1, workersNeededNumber || 1))
+        : Math.max(1, workersNeededNumber || 1)
+
     return {
       skillIds: selectedSkillIds,
       farmId: selectedFarmId?.trim() || DEFAULT_FARM_ID,
@@ -1339,17 +1360,11 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       endDate,
       startTime,
       endTime,
-      jobPostDays:
-        scheduleType === "daily"
-          ? normalizedSelectedDailyDates.map((d) => ({
-            workDate: toDateOnlyFromDate(d),
-            workersNeeded: Math.max(1, workersNeededNumber || 1),
-          }))
-          : [],
+      jobPostDays: draftJobPostDays,
       requirements,
       privileges: benefits,
       wageAmount: incomeNumber,
-      workersNeeded: Math.max(1, workersNeededNumber || 1),
+      workersNeeded: draftWorkersNeeded,
       workersAccepted: 0,
       isUrgent,
       statusId: 1, // Draft status
@@ -1361,7 +1376,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     title, description, income, location, selectedSkillIds, selectedFarmId,
     selectedJobCategoryId, scheduleType, contractStartDate, contractEndDate,
     dailyStartTime, dailyEndTime, normalizedSelectedDailyDates, requirements,
-    benefits, incomeNumber, workersNeededNumber, isUrgent,
+    benefits, incomeNumber, workersNeededNumber, dailyWorkersNeededMap, isUrgent,
   ])
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -1441,9 +1456,17 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         ? draft.jobPostDays.map((day) => day.workDate)
         : (draft as any).selectedDays ?? []
       const dates = draftDays
-        .map((d: string) => { const dd = new Date(d); return Number.isNaN(dd.getTime()) ? null : startOfDay(dd) })
-        .filter((d): d is Date => d !== null)
+        .map((d: string): Date | null => { const dd = new Date(d); return Number.isNaN(dd.getTime()) ? null : startOfDay(dd) })
+        .filter((d: Date | null): d is Date => d !== null)
       setSelectedDailyDates(dates)
+
+      const initialDailyWorkersNeeded: Record<string, string> = {}
+      ;(draft.jobPostDays ?? []).forEach((day) => {
+        const dateStr = day.workDate.split("T")[0]
+        initialDailyWorkersNeeded[dateStr] = String(Math.max(1, day.workersNeeded ?? 1))
+      })
+      setDailyWorkersNeededMap(initialDailyWorkersNeeded)
+
       const draftDayWorkers = draft.jobPostDays?.map((day) => day.workersNeeded) ?? []
       const maxWorkersNeeded = draftDayWorkers.length
         ? Math.max(...draftDayWorkers)
@@ -1452,6 +1475,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     } else {
       setScheduleType("contract")
       setSelectedDailyDates([])
+      setDailyWorkersNeededMap({})
       setWorkersNeeded(String(Math.max(1, draft.workersNeeded ?? 1)))
       setContractStartDate(draft.startDate ? formatDateDDMMYYYY(draft.startDate) : "")
       setContractEndDate(draft.endDate ? formatDateDDMMYYYY(draft.endDate) : "")
