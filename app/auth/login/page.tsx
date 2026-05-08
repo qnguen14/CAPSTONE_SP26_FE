@@ -120,6 +120,8 @@ export default function LoginPage() {
         password: farmerPassword,
       });
 
+      
+
       if (response.status_code === 200 || response.status_code === 0) {
         // Extract user data and tokens from response
         const userData = response.data as typeof response.data & {
@@ -129,9 +131,10 @@ export default function LoginPage() {
           name?: string;
           fullName?: string;
           refresh_token?: string;
+          refreshToken?: string;
         };
         const accessToken = userData.token || '';
-        const refreshToken = userData.refresh_token || '';
+        const refreshToken = userData.refreshToken || userData.refresh_token || '';
         const role = normalizeAuthRole(userData.role);
 
         if (userData.isVerified === false) {

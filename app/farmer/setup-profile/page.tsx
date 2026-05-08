@@ -18,10 +18,14 @@ import { cloudinaryService } from "@/libs/api/services/cloudinary.service";
 import { useToast } from "@/hooks/use-toast";
 import { AddressForm } from "@/components/address-form";
 import { format } from "date-fns";
+import { authService } from "@/libs/api/services/auth.service";
+import { userService } from "@/libs/api/services/user.service";
+import { useAuth } from "@/libs/stores/auth.store";
 
 export default function SetupProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -126,6 +130,35 @@ export default function SetupProfilePage() {
       };
 
       await farmerService.updateProfile(finalData);
+
+      // Try to refresh access token and update auth store so backend recognizes newly created profile
+      try {
+        if (typeof window !== "undefined") {
+          const refreshToken = localStorage.getItem("refresh_token");
+          if (refreshToken) {
+            const refreshRes = await authService.refreshToken(refreshToken);
+            const newAccessToken = refreshRes?.data?.accessToken || refreshRes?.data?.token || (refreshRes as any)?.data;
+            if (newAccessToken) {
+              localStorage.setItem("access_token", newAccessToken);
+            }
+          }
+
+          // Fetch latest user profile and update auth context
+          try {
+            const userRes = await userService.getProfile();
+            const user = userRes.data;
+            const accessToken = localStorage.getItem("access_token") || "";
+            const refreshTok = localStorage.getItem("refresh_token") || "";
+            // Update auth store (login will schedule expiry timer)
+            login(user as any, accessToken, refreshTok);
+          } catch (err) {
+            // non-fatal: continue without blocking user
+            console.warn("Failed to refresh user after profile update", err);
+          }
+        }
+      } catch (err) {
+        console.warn("Token refresh after profile update failed", err);
+      }
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem("profile_setup_completed", "1");

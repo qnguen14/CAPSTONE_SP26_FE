@@ -50,7 +50,7 @@ export function GoogleLoginButton({ roleId, showDivider = false, onSuccess, onEr
         const userData = response.data;
         const accessToken = userData.token || '';
         // @ts-ignore
-        const refreshToken = userData.refresh_token || '';
+        const refreshToken = userData.refreshToken || userData.refresh_token || '';
         const role = normalizeAuthRole(userData.role);
 
         if (userData.isVerified === false) {
