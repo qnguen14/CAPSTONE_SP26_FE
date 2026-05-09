@@ -19,6 +19,21 @@ import { format } from "date-fns";
 import { disputeService, FarmService, jobService } from "@/libs/api";
 import { toast } from "sonner";
 
+const WARNING_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+const isRecentWarning = (profile: FarmerProfile | null) => {
+    if (!profile?.warningCount || !profile.lastWarnedAt) {
+        return false;
+    }
+
+    const warnedAt = new Date(profile.lastWarnedAt).getTime();
+    if (Number.isNaN(warnedAt)) {
+        return false;
+    }
+
+    return Date.now() - warnedAt < profile.warningCount * WARNING_WINDOW_MS;
+};
+
 export default function FarmerProfilePage() {
     const [profile, setProfile] = useState<FarmerProfile | null>(null);
     const [defaultFarmInfo, setDefaultFarmInfo] = useState<GetFarmResponse | null>(null);
@@ -51,7 +66,9 @@ export default function FarmerProfilePage() {
         description: "",
         evidenceUrl: "",
     });
+    const [warningProfile, setWarningProfile] = useState<FarmerProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const shouldShowWarning = isRecentWarning(warningProfile);
 
     const getDisputeStatusLabel = (statusId: number) => {
         switch (statusId) {
@@ -236,6 +253,7 @@ export default function FarmerProfilePage() {
                 setIsLoading(true);
                 const response = await farmerService.getProfile();
                 setProfile(response.data);
+                setWarningProfile(response.data);
 
                 // Fetch default farm info
                 if (response.data.mainFarmId) {
@@ -333,6 +351,29 @@ export default function FarmerProfilePage() {
                 </div>
             </div>
 
+            {shouldShowWarning && warningProfile && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+                                <AlertTriangle className="h-5 w-5" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="font-semibold text-amber-900">Tài khoản của bạn đang có cảnh báo</p>
+                                <p className="text-sm text-amber-800">
+                                    Hệ thống đã ghi nhận {warningProfile.warningCount} cảnh báo cho hồ sơ này.
+                                </p>
+                                <p className="text-sm text-amber-800">
+                                    {warningProfile.lastWarnedAt
+                                        ? `Cảnh báo gần nhất: ${format(new Date(warningProfile.lastWarnedAt), "dd/MM/yyyy HH:mm")}`
+                                        : "Chưa ghi nhận thời điểm cảnh báo gần nhất."}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Details Grid */}
             <div className="grid gap-6 md:grid-cols-2">
                 <Card className="border-0 shadow-sm border-slate-100 bg-white/70">
@@ -383,7 +424,7 @@ export default function FarmerProfilePage() {
                             </div>
                             <div className="grid gap-1">
                                 <span className="text-sm font-medium text-slate-500">Loại hình</span>
-                                <span className="text-base text-slate-900"> {defaultFarmInfo?.farmType === 1 ? "Chăn nuôi" : defaultFarmInfo?.farmType === 2 ? "Trồng trọt" : "Nuôi trồng thủy hải sản"}</span>
+                                <span className="text-base text-slate-900"> {defaultFarmInfo?.farmTypeId === "1" ? "Chăn nuôi" : defaultFarmInfo?.farmTypeId === "2" ? "Trồng trọt" : "Nuôi trồng thủy hải sản"}</span>
                             </div>
 
                             <div className="grid gap-1">
