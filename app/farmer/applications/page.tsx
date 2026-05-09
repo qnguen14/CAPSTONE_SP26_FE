@@ -48,6 +48,7 @@ import type {
   PaginatedResponse,
   RespondApplicationRequest,
 } from "@/libs/types"
+import { JobPostStatus } from "@/libs/types"
 import { jobService } from "@/libs/api/services/jobs.service"
 import { jobApplicationService } from "@/libs/api/services/jobApplication.service"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -207,6 +208,11 @@ export default function ApplicationsPage() {
   const handleRespond = async (statusId: ApplicationStatusId) => {
     if (!selectedApplication) return
 
+    if (selectedJob?.statusId === JobPostStatus.Closed && statusId === APP_STATUS.accepted) {
+      setError("Bài đăng đã đóng, không thể duyệt ứng viên.")
+      return
+    }
+
     try {
       setIsSubmittingResponse(true)
 
@@ -231,12 +237,12 @@ export default function ApplicationsPage() {
   }
 
   const selectedJob = jobs.find((job) => job.id === selectedJobId)
+  const isSelectedJobClosed = selectedJob?.statusId === JobPostStatus.Closed
 
   return (
     <div className="flex flex-col gap-6">
       <div className="relative overflow-hidden rounded-2xl border bg-linear-to-r from-emerald-50 via-teal-50 to-cyan-50 p-5 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20">
         <div className="pointer-events-none absolute -top-12 right-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-700/20" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Quản lý ứng viên</h1>
             <p className="text-muted-foreground">Quản lý và theo dõi ứng viên theo từng bài đăng</p>
@@ -503,11 +509,11 @@ export default function ApplicationsPage() {
             <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
               Đóng
             </Button>
-            {selectedApplication?.statusId === APP_STATUS.pending && (
+            {selectedApplication?.statusId === APP_STATUS.pending && !isSelectedJobClosed && (
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700"
                 onClick={() => {
-                  setResponseStatus(APP_STATUS.accepted as ApplicationStatusId)
+                  setResponseStatus(isSelectedJobClosed ? (APP_STATUS.rejected as ApplicationStatusId) : (APP_STATUS.accepted as ApplicationStatusId))
                   setResponseMessage("")
                   setIsDetailOpen(false)
                   setIsRespondDialogOpen(true)
@@ -546,10 +552,12 @@ export default function ApplicationsPage() {
                     onValueChange={(value) => setResponseStatus(Number(value) as ApplicationStatusId)}
                     className="flex flex-row gap-6 mt-2"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem id="apps-resp-approved" value={String(APP_STATUS.accepted)} />
-                      <Label htmlFor="apps-resp-approved" className="cursor-pointer">Chấp nhận</Label>
-                    </div>
+                    {!isSelectedJobClosed && (
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="apps-resp-approved" value={String(APP_STATUS.accepted)} />
+                        <Label htmlFor="apps-resp-approved" className="cursor-pointer">Chấp nhận</Label>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem id="apps-resp-rejected" value={String(APP_STATUS.rejected)} />
                       <Label htmlFor="apps-resp-rejected" className="cursor-pointer">Từ chối</Label>
