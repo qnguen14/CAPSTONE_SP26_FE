@@ -348,6 +348,7 @@ export default function FarmerJobDetailPage() {
   }
 
   const status = useMemo(() => normalizeStatus(job?.statusId, job?.startDate), [job?.statusId, job?.startDate])
+  const isJobClosed = job?.statusId === JOB_POST_STATUS.Closed
   const canDisplayJobReports =
     job?.statusId !== JOB_POST_STATUS.Draft &&
     job?.statusId !== JOB_POST_STATUS.Published &&
@@ -492,7 +493,13 @@ export default function FarmerJobDetailPage() {
       console.log(response);
       setSelectedApplication(response.data)
       setResponseMessage(response.data.responseMessage ?? "")
-      setResponseStatus(response.data.statusId === APP_STATUS.rejected ? APP_STATUS.rejected : APP_STATUS.accepted)
+      setResponseStatus(
+        job?.statusId === JOB_POST_STATUS.Closed
+          ? APP_STATUS.rejected
+          : response.data.statusId === APP_STATUS.rejected
+            ? APP_STATUS.rejected
+            : APP_STATUS.accepted,
+      )
     } catch (detailError) {
       console.error(detailError)
       setSelectedApplication(null)
@@ -512,6 +519,11 @@ export default function FarmerJobDetailPage() {
 
   const handleRespondApplication = async (statusId: ApplicationStatusId) => {
     if (!selectedApplication) {
+      return
+    }
+
+    if (job?.statusId === JOB_POST_STATUS.Closed && statusId === APP_STATUS.accepted) {
+      setApplicationDetailError("Bài đăng đã đóng, không thể duyệt ứng viên.")
       return
     }
 
@@ -694,7 +706,10 @@ export default function FarmerJobDetailPage() {
   }
 
   const handleAutoAccept = async (applicationId: string) => {
-    if (!jobId) return
+    if (!jobId || job?.statusId === JOB_POST_STATUS.Closed) {
+      setError("Bài đăng đã đóng, không thể duyệt ứng viên.")
+      return
+    }
     try {
       setAutoAcceptingId(applicationId)
       await jobApplicationService.autoAccept(applicationId)
@@ -712,6 +727,11 @@ export default function FarmerJobDetailPage() {
   }
 
   const requestAutoAccept = (applicationId: string) => {
+    if (job?.statusId === JOB_POST_STATUS.Closed) {
+      setError("Bài đăng đã đóng, không thể duyệt ứng viên.")
+      return
+    }
+
     setConfirmAction({ type: "auto-accept-application", applicationId })
   }
 
@@ -1494,14 +1514,14 @@ export default function FarmerJobDetailPage() {
                               >
                                 <InfoIcon className="h-4 w-4" />
                               </Button>
-                              {application.statusId === APP_STATUS.pending && (
+                              {application.statusId === APP_STATUS.pending && !isJobClosed && (
                                 <>
                                   <Button
                                     type="button"
                                     size="sm"
                                     variant="outline"
                                     className="h-8 w-8 p-0 rounded-lg hover:bg-agro-green/10 text-agro-green"
-                                    disabled={autoAcceptingId === application.id}
+                                    disabled={isJobClosed || autoAcceptingId === application.id}
                                     onClick={() => requestAutoAccept(application.id)}
                                   >
                                     {autoAcceptingId === application.id ? (
@@ -1970,10 +1990,12 @@ export default function FarmerJobDetailPage() {
                   >
                     <div className="flex flex-row gap-10 mt-2">
 
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="resp-approved" value={String(APP_STATUS.accepted)} />
-                        <Label htmlFor="resp-approved">Chấp nhận</Label>
-                      </div>
+                      {!isJobClosed && (
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem id="resp-approved" value={String(APP_STATUS.accepted)} />
+                          <Label htmlFor="resp-approved">Chấp nhận</Label>
+                        </div>
+                      )}
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem id="resp-rejected" value={String(APP_STATUS.rejected)} />
                         <Label htmlFor="resp-rejected">Từ chối</Label>
