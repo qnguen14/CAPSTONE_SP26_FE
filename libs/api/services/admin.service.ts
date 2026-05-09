@@ -14,9 +14,9 @@ const ROLE_TO_ID: Record<string, number> = {
 };
 
 const ADMIN_FALLBACK_ENDPOINTS = {
-  DISPUTES: "/admin/disputes",
-  DISPUTE_DETAIL: (id: string) => `/admin/disputes/${id}`,
-  RESOLVE_DISPUTE: (id: string) => `/admin/disputes/${id}/resolve`,
+  DISPUTES: "/disputes",
+  DISPUTE_DETAIL: (id: string) => `/disputes/${id}`,
+  RESOLVE_DISPUTE: (id: string) => `/disputes/${id}/resolve`,
   SETTINGS: "/admin/settings",
   STATISTICS: "/admin/statistics",
 } as const;
@@ -132,10 +132,12 @@ export const adminService = {
    * Get all disputes
    */
   getDisputes: async (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  }): Promise<ApiResponse<PaginatedResponse<any>>> => {
+    pageNumber?: number;
+    pageSize?: number;
+    jobPostName?: string;
+    disputeTypeId?: number;
+    statusId?: number;
+  }): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.get(
       ADMIN_FALLBACK_ENDPOINTS.DISPUTES,
       { params },
@@ -314,6 +316,66 @@ export const adminService = {
     const response = await axiosInstance.get(
       API_ENDPOINTS.ADMIN.WALLET_TRANSACTIONS,
       { params },
+    );
+    return response.data;
+  },
+
+  /**
+   * Get all skills
+   */
+  getSkills: async (params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    name?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get(API_ENDPOINTS.SKILL.SKILLS, {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Create a new skill
+   */
+  createSkill: async (data: {
+    name: string;
+    description: string;
+    categoryId: string;
+    isActive: boolean;
+  }): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.post(
+      API_ENDPOINTS.SKILL.CREATE_SKILL,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Update a skill
+   */
+  updateSkill: async (
+    id: string,
+    data: {
+      name: string;
+      description: string;
+      categoryId: string;
+      isActive: boolean;
+    },
+  ): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.put(
+      API_ENDPOINTS.SKILL.UPDATE_SKILL(id),
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Delete a skill
+   */
+  deleteSkill: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await axiosInstance.delete(
+      API_ENDPOINTS.SKILL.DELETE_SKILL(id),
     );
     return response.data;
   },
