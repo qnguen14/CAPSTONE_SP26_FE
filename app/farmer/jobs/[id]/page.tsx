@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Clock, FileText, InfoIcon, MailIcon, MapPin, MessageSquare, Play, RotateCw, Star, Users, XCircle, Paperclip, MessageCircleIcon, ArrowDownUp } from "lucide-react"
+import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Clock, FileText, InfoIcon, MailIcon, MapPin, MessageSquare, Play, RotateCw, Star, Users, XCircle, Paperclip, MessageCircleIcon, ArrowDownUp, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -1162,6 +1162,12 @@ export default function FarmerJobDetailPage() {
                     {job.jobTypeId && (
                       <Badge variant="secondary" className="bg-white/60 dark:bg-zinc-800/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 text-sm mt-3">
                         {job.jobTypeId === 1 ? "Khoán" : job.jobTypeId === 2 ? "Ngày" : "Khác"}
+                      </Badge>
+                    )}
+                    {job.isUrgent && (
+                      <Badge className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-400 gap-1 text-sm mt-3">
+                        <Zap className="h-3 w-3" />
+                        Gấp
                       </Badge>
                     )}
                   </div>
