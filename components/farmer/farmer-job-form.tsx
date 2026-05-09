@@ -4,7 +4,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState }
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, ArrowUpRight, Banknote, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight, User, Users } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Banknote, Check, CheckCheck, ChevronsUpDown, MapPin, Plus, X, Calendar as CalendarIcon, Briefcase, FileText, CalendarRange, CheckSquare, Award, Gift, AlignLeft, Layout, Clock, Info, DollarSign, DollarSignIcon, ChevronLeft, ChevronRight, User, Users, AlertTriangle } from "lucide-react"
 import { eachDayOfInterval, format, isSameDay, startOfDay } from "date-fns"
 import type { DateRange } from "react-day-picker"
 import { Badge } from "@/components/ui/badge"
@@ -32,11 +32,13 @@ import { farmerService } from "@/libs/api/services/farmer.service"
 import { FarmService } from "@/libs/api/services/farm.service"
 import { jobCategoryService } from "@/libs/api/services/job-category.service"
 import { skillService } from "@/libs/api/services/skill.service"
-import { JobPostStatus, JobStatus, type CreateJobRequest, type GetFarmResponse, type Job, type JobCategory, type Skill, type UpdateJobRequest } from "@/libs/types"
+import { JobPostStatus, JobStatus, type CreateJobRequest, type FarmerProfile, type GetFarmResponse, type Job, type JobCategory, type Skill, type UpdateJobRequest } from "@/libs/types"
 import { cn } from "@/libs/utils/utils"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@radix-ui/react-collapsible"
 import { jobService } from "@/libs/api/services/jobs.service"
 import { JobDraftDialog, LeavingPromptDialog } from "@/components/farmer/job-draft-dialog"
+
+const WARNING_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
 
 type WorkScheduleType = "contract" | "daily"
 
@@ -83,6 +85,19 @@ const JOB_TYPE_CONTRACT_ID = 1
 const JOB_TYPE_DAILY_ID = 2
 const DEFAULT_STATUS_ID = JobPostStatus.Published
 const DEFAULT_IS_URGENT = false
+
+const isRecentWarning = (profile: FarmerProfile | null) => {
+  if (!profile?.warningCount || !profile.lastWarnedAt) {
+    return false
+  }
+
+  const warnedAt = new Date(profile.lastWarnedAt).getTime()
+  if (Number.isNaN(warnedAt)) {
+    return false
+  }
+
+  return Date.now() - warnedAt < profile.warningCount * WARNING_WINDOW_MS
+}
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -305,6 +320,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [selectedFarmId, setSelectedFarmId] = useState(DEFAULT_FARM_ID)
   const [isLoadingFarms, setIsLoadingFarms] = useState(true)
   const [isFarmPopoverOpen, setIsFarmPopoverOpen] = useState(false)
+  const [warningProfile, setWarningProfile] = useState<FarmerProfile | null>(null)
 
   const [scheduleType, setScheduleType] = useState<WorkScheduleType>("contract")
   const [contractStartDate, setContractStartDate] = useState("")
@@ -322,12 +338,26 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [postedJob, setPostedJob] = useState<PostedJobPreview | null>(null)
+  const shouldShowWarning = isRecentWarning(warningProfile)
   const postedJobRef = useRef<PostedJobPreview | null>(null)
   const isHydratingPresetJobRef = useRef(false)
 
   useEffect(() => {
     postedJobRef.current = postedJob
   }, [postedJob])
+
+  useEffect(() => {
+    const fetchWarningProfile = async () => {
+      try {
+        const response = await farmerService.getProfile()
+        setWarningProfile(response.data)
+      } catch {
+        setWarningProfile(null)
+      }
+    }
+
+    void fetchWarningProfile()
+  }, [])
 
   // Keep ref in sync with state so callbacks always see the latest value
   useEffect(() => {
@@ -1731,6 +1761,29 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
+      {shouldShowWarning && warningProfile && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-amber-900">Tài khoản của bạn đang bị hệ thống cảnh báo</p>
+              <p className="text-sm text-amber-800">
+                Bạn không thẻ đăng tin tuyển dụng mới khi còn cảnh báo.
+                <br />
+                Hiện có {warningProfile.warningCount} cảnh báo được ghi nhận cho hồ sơ này.
+              </p>
+              <p className="text-sm text-amber-800">
+                {warningProfile.lastWarnedAt
+                  ? `Cảnh báo gần nhất: ${format(new Date(warningProfile.lastWarnedAt), "dd/MM/yyyy HH:mm")}`
+                  : "Chưa ghi nhận thời điểm cảnh báo gần nhất."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative overflow-hidden rounded-2xl border bg-linear-to-r from-emerald-50 via-teal-50 to-cyan-50 p-5 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20">
         <div className="pointer-events-none absolute -top-12 right-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-700/20" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -39,6 +39,32 @@ import { useAuth } from "@/libs/stores/auth.store";
 import { AnimatedBubbles } from "@/components/farmer/animated-bubbles";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SignalRProvider } from "@/contexts/signalr-context";
+import { format } from "date-fns";
+import { AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const WARNING_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+const isRecentWarning = (profile: FarmerProfile | null) => {
+  if (!profile?.warningCount || !profile.lastWarnedAt) {
+    return false;
+  }
+
+  const warnedAt = new Date(profile.lastWarnedAt).getTime();
+  if (Number.isNaN(warnedAt)) {
+    return false;
+  }
+
+  return Date.now() - warnedAt < profile.warningCount * WARNING_WINDOW_MS;
+};
 
 export default function FarmerLayout({
   children,
@@ -54,6 +80,8 @@ export default function FarmerLayout({
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifPage, setNotifPage] = useState(1);
   const [notifTotalPages, setNotifTotalPages] = useState(1);
+  const [warningProfile, setWarningProfile] = useState<FarmerProfile | null>(null);
+  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const NOTIF_PAGE_SIZE = 4;
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -153,6 +181,29 @@ export default function FarmerLayout({
       try {
         const response = await farmerService.getProfile();
         setProfile(response.data);
+        const warningDialogKey = response.data
+          ? `${response.data.id}:${response.data.warningCount ?? 0}:${response.data.lastWarnedAt ?? "no-warning-date"}`
+          : "";
+
+        if (isRecentWarning(response.data)) {
+          const seenWarningKey = typeof window !== "undefined"
+            ? sessionStorage.getItem("farmer_warning_dialog_key")
+            : null;
+
+          setWarningProfile(response.data);
+          if (seenWarningKey !== warningDialogKey) {
+            setIsWarningDialogOpen(true);
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("farmer_warning_dialog_key", warningDialogKey);
+            }
+          }
+        } else {
+          setWarningProfile(null);
+          setIsWarningDialogOpen(false);
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem("farmer_warning_dialog_key");
+          }
+        }
         // Also check if any requisite fields are missing 
         if (!response.data?.contactName && !response.data?.address) {
           setIsProfileMissing(true);
@@ -223,6 +274,27 @@ export default function FarmerLayout({
   return (
     <div className="min-h-screen bg-agro-cream relative">
       <AnimatedBubbles />
+      <AlertDialog open={isWarningDialogOpen && isRecentWarning(warningProfile)} onOpenChange={setIsWarningDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertTriangle className="h-10 w-10 text-amber-500" />
+            <AlertDialogTitle>Bạn vừa nhận cảnh báo từ hệ thống</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Tài khoản của bạn hiện có {warningProfile?.warningCount ?? 0} cảnh báo đang ghi nhận.
+              </p>
+              <p>
+                {warningProfile?.lastWarnedAt
+                  ? `Thời điểm cảnh báo gần nhất: ${format(new Date(warningProfile.lastWarnedAt), "dd/MM/yyyy HH:mm")}`
+                  : "Chúng tôi chưa ghi nhận thời điểm cảnh báo gần nhất."}
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>Đã hiểu</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Top Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-border shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">

@@ -29,6 +29,8 @@ export interface FarmerProfile {
   createdAt: string;
   updatedAt: string;
   avatarUrl?: string;
+  warningCount: number;
+  lastWarnedAt?: string;
   user?: FarmerUserRefDTO;
 }
 
