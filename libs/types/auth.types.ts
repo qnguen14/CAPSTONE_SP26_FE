@@ -8,6 +8,7 @@ export interface AuthData {
   token: string;
   expiresAt: string;
   email: string;
+  refreshToken?: string;
 }
 
 export interface LoginResponse {
@@ -17,6 +18,7 @@ export interface LoginResponse {
   role: string;
   userId: string;
   isVerified: boolean;
+  refreshToken?: string;
 }
 
 export interface RegisterRequest {

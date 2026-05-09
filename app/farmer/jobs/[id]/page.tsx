@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Clock, FileText, InfoIcon, MailIcon, MapPin, MessageSquare, Play, RotateCw, Star, Users, XCircle, Paperclip, MessageCircleIcon, ArrowDownUp } from "lucide-react"
+import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Clock, FileText, InfoIcon, MailIcon, MapPin, MessageSquare, Play, RotateCw, Star, Users, XCircle, Paperclip, MessageCircleIcon, ArrowDownUp, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -244,6 +244,15 @@ export default function FarmerJobDetailPage() {
     applicationId?: string
   } | null>(null)
 
+  const filteredApplications = useMemo(() => {
+    return applications.filter((app) => {
+      if (applicationFilter === "pending") return app.statusId === APP_STATUS.pending
+      if (applicationFilter === "approved") return app.statusId === APP_STATUS.accepted
+      if (applicationFilter === "cancelled") return app.statusId === APP_STATUS.cancelled || app.statusId === APP_STATUS.rejected
+      return true
+    })
+  }, [applications, applicationFilter])
+
   const redirectIfDraftJob = (jobData: Job) => {
     if (jobData.statusId === JOB_POST_STATUS.Draft) {
       router.replace("/farmer/jobs")
@@ -339,6 +348,7 @@ export default function FarmerJobDetailPage() {
   }
 
   const status = useMemo(() => normalizeStatus(job?.statusId, job?.startDate), [job?.statusId, job?.startDate])
+  const isJobClosed = job?.statusId === JOB_POST_STATUS.Closed
   const canDisplayJobReports =
     job?.statusId !== JOB_POST_STATUS.Draft &&
     job?.statusId !== JOB_POST_STATUS.Published &&
@@ -415,7 +425,7 @@ export default function FarmerJobDetailPage() {
         limit: 4,
         page: page,
         statusId: statusId,
-        includeAll: true,
+        includeAll: statusId === undefined,
       })
 
       setApplications(response.data.data)
@@ -483,7 +493,13 @@ export default function FarmerJobDetailPage() {
       console.log(response);
       setSelectedApplication(response.data)
       setResponseMessage(response.data.responseMessage ?? "")
-      setResponseStatus(response.data.statusId === APP_STATUS.rejected ? APP_STATUS.rejected : APP_STATUS.accepted)
+      setResponseStatus(
+        job?.statusId === JOB_POST_STATUS.Closed
+          ? APP_STATUS.rejected
+          : response.data.statusId === APP_STATUS.rejected
+            ? APP_STATUS.rejected
+            : APP_STATUS.accepted,
+      )
     } catch (detailError) {
       console.error(detailError)
       setSelectedApplication(null)
@@ -503,6 +519,11 @@ export default function FarmerJobDetailPage() {
 
   const handleRespondApplication = async (statusId: ApplicationStatusId) => {
     if (!selectedApplication) {
+      return
+    }
+
+    if (job?.statusId === JOB_POST_STATUS.Closed && statusId === APP_STATUS.accepted) {
+      setApplicationDetailError("Bài đăng đã đóng, không thể duyệt ứng viên.")
       return
     }
 
@@ -685,7 +706,10 @@ export default function FarmerJobDetailPage() {
   }
 
   const handleAutoAccept = async (applicationId: string) => {
-    if (!jobId) return
+    if (!jobId || job?.statusId === JOB_POST_STATUS.Closed) {
+      setError("Bài đăng đã đóng, không thể duyệt ứng viên.")
+      return
+    }
     try {
       setAutoAcceptingId(applicationId)
       await jobApplicationService.autoAccept(applicationId)
@@ -703,6 +727,11 @@ export default function FarmerJobDetailPage() {
   }
 
   const requestAutoAccept = (applicationId: string) => {
+    if (job?.statusId === JOB_POST_STATUS.Closed) {
+      setError("Bài đăng đã đóng, không thể duyệt ứng viên.")
+      return
+    }
+
     setConfirmAction({ type: "auto-accept-application", applicationId })
   }
 
@@ -777,6 +806,12 @@ export default function FarmerJobDetailPage() {
     } else {
       void handleUpdateStatus(JOB_POST_STATUS.InProgress)
     }
+  }
+
+  const handleRepostJob = () => {
+    if (!jobId) return
+
+    router.push(`/farmer/create-job?repostFromJobId=${encodeURIComponent(jobId)}`)
   }
 
   const openRatingDialog = (application: ApplicationDTO) => {
@@ -1071,6 +1106,16 @@ export default function FarmerJobDetailPage() {
                   </Link>
                 </Button>
               )}
+
+              {job.statusId === JOB_POST_STATUS.Cancelled && (
+                <Button
+                  variant="outline"
+                  onClick={handleRepostJob}
+                  className="border-agro-green/20 text-agro-green hover:bg-agro-green/10"
+                >
+                  Đăng lại
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -1117,6 +1162,12 @@ export default function FarmerJobDetailPage() {
                     {job.jobTypeId && (
                       <Badge variant="secondary" className="bg-white/60 dark:bg-zinc-800/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 text-sm mt-3">
                         {job.jobTypeId === 1 ? "Khoán" : job.jobTypeId === 2 ? "Ngày" : "Khác"}
+                      </Badge>
+                    )}
+                    {job.isUrgent && (
+                      <Badge className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-400 gap-1 text-sm mt-3">
+                        <Zap className="h-3 w-3" />
+                        Gấp
                       </Badge>
                     )}
                   </div>
@@ -1359,7 +1410,7 @@ export default function FarmerJobDetailPage() {
                       <Users className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl">Ứng viên ({applications.length})</CardTitle>
+                      <CardTitle className="text-xl">Ứng viên ({filteredApplications.length})</CardTitle>
                       <CardDescription>Danh sách hồ sơ ứng tuyển</CardDescription>
                     </div>
                   </div>
@@ -1424,7 +1475,7 @@ export default function FarmerJobDetailPage() {
                       </div>
                     ) : null}
 
-                    {applications.map((application) => (
+                    {filteredApplications.map((application) => (
                         <div
                           key={application.id}
                           className="group relative flex h-full flex-col gap-3 rounded-xl border border-muted bg-muted/30 p-4 transition-all duration-300 hover:border-agro-green/30 hover:bg-muted/50"
@@ -1469,14 +1520,14 @@ export default function FarmerJobDetailPage() {
                               >
                                 <InfoIcon className="h-4 w-4" />
                               </Button>
-                              {application.statusId === APP_STATUS.pending && (
+                              {application.statusId === APP_STATUS.pending && !isJobClosed && (
                                 <>
                                   <Button
                                     type="button"
                                     size="sm"
                                     variant="outline"
                                     className="h-8 w-8 p-0 rounded-lg hover:bg-agro-green/10 text-agro-green"
-                                    disabled={autoAcceptingId === application.id}
+                                    disabled={isJobClosed || autoAcceptingId === application.id}
                                     onClick={() => requestAutoAccept(application.id)}
                                   >
                                     {autoAcceptingId === application.id ? (
@@ -1945,10 +1996,12 @@ export default function FarmerJobDetailPage() {
                   >
                     <div className="flex flex-row gap-10 mt-2">
 
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="resp-approved" value={String(APP_STATUS.accepted)} />
-                        <Label htmlFor="resp-approved">Chấp nhận</Label>
-                      </div>
+                      {!isJobClosed && (
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem id="resp-approved" value={String(APP_STATUS.accepted)} />
+                          <Label htmlFor="resp-approved">Chấp nhận</Label>
+                        </div>
+                      )}
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem id="resp-rejected" value={String(APP_STATUS.rejected)} />
                         <Label htmlFor="resp-rejected">Từ chối</Label>

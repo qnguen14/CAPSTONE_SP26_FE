@@ -33,10 +33,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChatSidebar } from "../chat/chat-sidebar";
 
 const PAGE_SIZE = 10;
 
+import { useToast } from "@/hooks/use-toast";
 type UserMap = Record<string, { fullName: string; email: string }>;
 
 export function AdminDisputes() {
@@ -47,6 +55,7 @@ export function AdminDisputes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userMap, setUserMap] = useState<UserMap>({});
+  const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -178,7 +187,11 @@ export function AdminDisputes() {
     avatarUrl?: string,
   ) => {
     if (!userId) {
-      alert("Người dùng không tồn tại");
+      toast({
+        title: "Không thể mở trò chuyện",
+        description: "Không tìm thấy người dùng để bắt đầu cuộc trò chuyện.",
+        variant: "destructive",
+      });
       return;
     }
     setChatReceiver({
@@ -217,10 +230,18 @@ export function AdminDisputes() {
       setIsStatusDialogOpen(false);
       setSelectedDispute(null);
       setSelectedStatusId(null);
-      alert("Cập nhật trạng thái thành công");
+      toast({
+        title: "Đã cập nhật trạng thái",
+        description: "Trạng thái tranh chấp đã được lưu thành công.",
+      });
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Lỗi khi cập nhật trạng thái");
+      toast({
+        title: "Cập nhật thất bại",
+        description:
+          err?.message || "Không thể cập nhật trạng thái tranh chấp.",
+        variant: "destructive",
+      });
     } finally {
       setStatusSubmitting(false);
     }

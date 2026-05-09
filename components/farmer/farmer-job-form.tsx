@@ -249,6 +249,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const { toast } = useToast()
   const [isFarmManagerDialogOpen, setIsFarmManagerDialogOpen] = useState(false)
   const isEditMode = mode === "edit" && Boolean(jobId)
+  const repostFromJobId = searchParams.get("repostFromJobId")?.trim()
 
   // Draft dialogs
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false)
@@ -300,6 +301,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [isJobCategoryPopoverOpen, setIsJobCategoryPopoverOpen] = useState(false)
 
   const [farms, setFarms] = useState<GetFarmResponse[]>([])
+  const [allFarms, setAllFarms] = useState<GetFarmResponse[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState(DEFAULT_FARM_ID)
   const [isLoadingFarms, setIsLoadingFarms] = useState(true)
   const [isFarmPopoverOpen, setIsFarmPopoverOpen] = useState(false)
@@ -321,7 +323,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [postedJob, setPostedJob] = useState<PostedJobPreview | null>(null)
   const postedJobRef = useRef<PostedJobPreview | null>(null)
-  const isResumingAfterTopUpRef = useRef(false)
+  const isHydratingPresetJobRef = useRef(false)
 
   useEffect(() => {
     postedJobRef.current = postedJob
@@ -408,6 +410,57 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       return next
     })
   }, [])
+
+  // Helper to normalize strings for diacritic-insensitive comparison
+  const normalizeStr = (s = "") =>
+    s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim()
+
+  // Filter farms when job category changes
+  useEffect(() => {
+    if (!allFarms.length) {
+      return
+    }
+
+    if (!selectedJobCategoryId || selectedJobCategoryId === DEFAULT_JOB_CATEGORY_ID) {
+      setFarms(allFarms)
+      return
+    }
+
+    const categoryNorm = normalizeStr(getJobCategoryLabel(selectedJobCategoryId))
+
+    const filtered = allFarms.filter((f) => {
+      if (!f) return false
+
+      // Match by farmTypeId or farmId directly
+      if ((f as any).farmTypeId && String((f as any).farmTypeId) === String(selectedJobCategoryId)) {
+        return true
+      }
+
+      if (String(f.farmId) === String(selectedJobCategoryId)) {
+        return true
+      }
+
+      // Match by farmTypeName using diacritic-insensitive comparison
+      const farmTypeNameNorm = normalizeStr(f.farmTypeName)
+      if (farmTypeNameNorm.includes(categoryNorm)) {
+        return true
+      }
+
+      return false
+    })
+
+    // Set filtered list even if empty (shows "no farms" message to user)
+    setFarms(filtered)
+    
+    if (filtered.length) {
+      setSelectedFarmId((current) => {
+        const exists = filtered.some((ff) => (ff.farmId || (ff as any).id) === current)
+        if (exists) return current
+        const first = filtered[0]
+        return first?.farmId || (first as any)?.id || DEFAULT_FARM_ID
+      })
+    }
+  }, [selectedJobCategoryId, allFarms])
 
   const getSkillLabel = (skillId: string) => {
     const rememberedLabel = skillLabelsById[skillId]
@@ -742,6 +795,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
             ? payload.data
             : []
 
+        setAllFarms(fetchedFarms)
         setFarms(fetchedFarms)
         setSelectedFarmId((currentSelected) => {
           if (currentSelected && currentSelected !== DEFAULT_FARM_ID) {
@@ -834,7 +888,12 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     }
 
     setContractStartDate(format(range.from, "dd/MM/yyyy"))
-    setContractEndDate(range.to ? format(range.to, "dd/MM/yyyy") : "")
+    // Only set an end date when the picker provides a distinct end different from the start.
+    if (range.to && !isSameDay(range.from, range.to)) {
+      setContractEndDate(format(range.to, "dd/MM/yyyy"))
+    } else {
+      setContractEndDate("")
+    }
   }
 
   const toggleRangeSelectionMode = () => {
@@ -899,6 +958,10 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     setSelectedDailyDates((current) => {
       if (!current.some((date) => isSameDay(date, dateToRemove))) {
         return current
+      }
+
+      if (rangeSelectionAnchor && isSameDay(rangeSelectionAnchor, dateToRemove)) {
+        setRangeSelectionAnchor(null)
       }
 
       return current.filter((date) => !isSameDay(date, dateToRemove))
@@ -1238,6 +1301,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     setContractEndDate("")
     setDailyStartTime("09:00")
     setDailyEndTime("17:00")
+    setDailyWorkersNeededMap({})
     clearAllSelectedDailyDates()
     setSubmitError(null)
     setPostedJob(null)
@@ -1269,6 +1333,26 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       endTime = formatTimeOnly(dailyEndTime)
     }
 
+    const draftJobPostDays =
+      scheduleType === "daily"
+        ? normalizedSelectedDailyDates.map((d) => {
+          const workDate = toDateOnlyFromDate(d)
+          const perDayValue = dailyWorkersNeededMap[workDate]
+          const parsedPerDay = perDayValue ? Number.parseInt(perDayValue, 10) : workersNeededNumber
+          return {
+            workDate,
+            workersNeeded: !Number.isNaN(parsedPerDay) && parsedPerDay > 0 ? parsedPerDay : 1,
+          }
+        })
+        : []
+
+    const draftWorkersNeeded =
+      scheduleType === "daily"
+        ? (draftJobPostDays.length
+          ? Math.max(...draftJobPostDays.map((day) => day.workersNeeded))
+          : Math.max(1, workersNeededNumber || 1))
+        : Math.max(1, workersNeededNumber || 1)
+
     return {
       skillIds: selectedSkillIds,
       farmId: selectedFarmId?.trim() || DEFAULT_FARM_ID,
@@ -1281,17 +1365,11 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
       endDate,
       startTime,
       endTime,
-      jobPostDays:
-        scheduleType === "daily"
-          ? normalizedSelectedDailyDates.map((d) => ({
-            workDate: toDateOnlyFromDate(d),
-            workersNeeded: Math.max(1, workersNeededNumber || 1),
-          }))
-          : [],
+      jobPostDays: draftJobPostDays,
       requirements,
       privileges: benefits,
       wageAmount: incomeNumber,
-      workersNeeded: Math.max(1, workersNeededNumber || 1),
+      workersNeeded: draftWorkersNeeded,
       workersAccepted: 0,
       isUrgent,
       statusId: 1, // Draft status
@@ -1303,7 +1381,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     title, description, income, location, selectedSkillIds, selectedFarmId,
     selectedJobCategoryId, scheduleType, contractStartDate, contractEndDate,
     dailyStartTime, dailyEndTime, normalizedSelectedDailyDates, requirements,
-    benefits, incomeNumber, workersNeededNumber, isUrgent,
+    benefits, incomeNumber, workersNeededNumber, dailyWorkersNeededMap, isUrgent,
   ])
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -1383,9 +1461,17 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         ? draft.jobPostDays.map((day) => day.workDate)
         : (draft as any).selectedDays ?? []
       const dates = draftDays
-        .map((d: string) => { const dd = new Date(d); return Number.isNaN(dd.getTime()) ? null : startOfDay(dd) })
-        .filter((d): d is Date => d !== null)
+        .map((d: string): Date | null => { const dd = new Date(d); return Number.isNaN(dd.getTime()) ? null : startOfDay(dd) })
+        .filter((d: Date | null): d is Date => d !== null)
       setSelectedDailyDates(dates)
+
+      const initialDailyWorkersNeeded: Record<string, string> = {}
+      ;(draft.jobPostDays ?? []).forEach((day) => {
+        const dateStr = day.workDate.split("T")[0]
+        initialDailyWorkersNeeded[dateStr] = String(Math.max(1, day.workersNeeded ?? 1))
+      })
+      setDailyWorkersNeededMap(initialDailyWorkersNeeded)
+
       const draftDayWorkers = draft.jobPostDays?.map((day) => day.workersNeeded) ?? []
       const maxWorkersNeeded = draftDayWorkers.length
         ? Math.max(...draftDayWorkers)
@@ -1394,6 +1480,7 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
     } else {
       setScheduleType("contract")
       setSelectedDailyDates([])
+      setDailyWorkersNeededMap({})
       setWorkersNeeded(String(Math.max(1, draft.workersNeeded ?? 1)))
       setContractStartDate(draft.startDate ? formatDateDDMMYYYY(draft.startDate) : "")
       setContractEndDate(draft.endDate ? formatDateDDMMYYYY(draft.endDate) : "")
@@ -1407,38 +1494,69 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
   }, [toast, rememberSkillLabels])
 
   useEffect(() => {
-    if (isEditMode || isResumingAfterTopUpRef.current) {
+    if (isEditMode || isHydratingPresetJobRef.current) {
       return
     }
 
-    if (searchParams.get("resumeFromTopUp") !== "1") {
+    const resumeFromTopUp = searchParams.get("resumeFromTopUp") === "1"
+
+    if (!resumeFromTopUp && !repostFromJobId) {
       return
     }
 
-    const draftId = searchParams.get("draftId")?.trim()
-    const shouldGoToConfirmStep = (searchParams.get("step") || "").toLowerCase() === "confirm"
-
-    isResumingAfterTopUpRef.current = true
+    isHydratingPresetJobRef.current = true
 
     const finalizeResume = () => {
       router.replace("/farmer/create-job")
     }
 
-    if (!draftId) {
-      setSubmitError("Nạp tiền thành công. Vui lòng kiểm tra lại thông tin trước khi đăng tin.")
-      if (shouldGoToConfirmStep) {
-        setStep(2)
+    if (resumeFromTopUp) {
+      const draftId = searchParams.get("draftId")?.trim()
+      const shouldGoToConfirmStep = (searchParams.get("step") || "").toLowerCase() === "confirm"
+
+      if (!draftId) {
+        setSubmitError("Nạp tiền thành công. Vui lòng kiểm tra lại thông tin trước khi đăng tin.")
+        if (shouldGoToConfirmStep) {
+          setStep(2)
+        }
+        finalizeResume()
+        return
       }
-      finalizeResume()
+
+      const hydrateDraftAfterTopUp = async () => {
+        try {
+          setIsLoadingExistingJob(true)
+          const response = await jobService.getJobDetail(draftId)
+          loadDraft(response.data as Job, {
+            step: shouldGoToConfirmStep ? 2 : 1,
+            showToast: false,
+          })
+          setSubmitError(null)
+          setIsDirty(false)
+          isDirtyRef.current = false
+
+          toast({
+            title: "Nạp tiền thành công",
+            description: "Hệ thống đã khôi phục bản nháp. Bạn có thể xác nhận đăng tin ngay.",
+          })
+        } catch {
+          setSubmitError("Đã nạp tiền nhưng không thể khôi phục bản nháp. Vui lòng kiểm tra lại thông tin trước khi đăng tin.")
+        } finally {
+          setIsLoadingExistingJob(false)
+          finalizeResume()
+        }
+      }
+
+      void hydrateDraftAfterTopUp()
       return
     }
 
-    const hydrateDraftAfterTopUp = async () => {
+    const hydrateCancelledJobForRepost = async () => {
       try {
         setIsLoadingExistingJob(true)
-        const response = await jobService.getJobDetail(draftId)
+        const response = await jobService.getJobDetail(repostFromJobId)
         loadDraft(response.data as Job, {
-          step: shouldGoToConfirmStep ? 2 : 1,
+          step: 1,
           showToast: false,
         })
         setSubmitError(null)
@@ -1446,18 +1564,18 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         isDirtyRef.current = false
 
         toast({
-          title: "Nạp tiền thành công",
-          description: "Hệ thống đã khôi phục bản nháp. Bạn có thể xác nhận đăng tin ngay.",
+          title: "Đã tải dữ liệu bài đăng",
+          description: "Bạn có thể chỉnh sửa nội dung, lưu nháp hoặc đăng lại ngay.",
         })
       } catch {
-        setSubmitError("Đã nạp tiền nhưng không thể khôi phục bản nháp. Vui lòng kiểm tra lại thông tin trước khi đăng tin.")
+        setSubmitError("Không thể tải dữ liệu bài đăng để đăng lại. Vui lòng thử lại.")
       } finally {
         setIsLoadingExistingJob(false)
         finalizeResume()
       }
     }
 
-    void hydrateDraftAfterTopUp()
+    void hydrateCancelledJobForRepost()
   }, [isEditMode, loadDraft, router, searchParams, toast])
 
   // ─── Navigation interception ──────────────────────────────────────────────
@@ -1618,11 +1736,17 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {isEditMode ? "Chỉnh sửa tin tuyển dụng" : "Đăng tin tuyển dụng"}
+              {isEditMode
+                ? "Chỉnh sửa tin tuyển dụng"
+                : repostFromJobId
+                  ? "Đăng lại tin tuyển dụng"
+                  : "Đăng tin tuyển dụng"}
             </h1>
             <p className="text-muted-foreground mt-1 mb-2">
               {isEditMode
                 ? "Cập nhật nội dung bài đăng để phù hợp hơn với nhu cầu tuyển dụng hiện tại."
+                : repostFromJobId
+                  ? "Dữ liệu từ tin đã hủy đã được nạp sẵn. Bạn có thể chỉnh sửa trước khi lưu nháp hoặc đăng lại."
                 : "Tạo nhân công phù hợp cho địa điểm canh tác của bạn."}
             </p>
           </div>
@@ -1924,11 +2048,11 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
 
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày bắt đầu <span className="text-destructive">*</span></Label>
+                          {/* <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày bắt đầu <span className="text-destructive">*</span></Label> */}
                           <Input value={contractStartDate} placeholder="dd/mm/yyyy" readOnly className="bg-muted/30" />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày kết thúc <span className="text-destructive">*</span></Label>
+                          {/* <Label className="text-xs font-bold uppercase text-muted-foreground">Ngày kết thúc <span className="text-destructive">*</span></Label> */}
                           <Input value={contractEndDate} placeholder="dd/mm/yyyy" readOnly className="bg-muted/30" />
                         </div>
                       </div>
@@ -2005,13 +2129,25 @@ export function FarmerJobForm({ mode = "create", jobId }: FarmerJobFormProps) {
                                 return (
                                   <div key={dateStr} className="flex items-center justify-between gap-3 p-2 rounded-md bg-background border">
                                     <span className="text-sm font-medium">{date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
-                                    <Input 
-                                      type="number" 
-                                      min="1" 
-                                      value={currentVal} 
-                                      onChange={(e) => setDailyWorkersNeededMap(prev => ({...prev, [dateStr]: e.target.value}))}
-                                      className="w-20 h-8 text-center" 
-                                    />
+                                    <div className="flex items-center gap-2">
+                                      <Input 
+                                        type="number" 
+                                        min="1" 
+                                        value={currentVal} 
+                                        onChange={(e) => setDailyWorkersNeededMap(prev => ({...prev, [dateStr]: e.target.value}))}
+                                        className="w-20 h-8 text-center" 
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        onClick={() => removeSelectedDailyDate(date)}
+                                        aria-label={`Xóa ngày ${date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}`}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 )
                               })}

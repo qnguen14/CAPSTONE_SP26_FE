@@ -20,11 +20,16 @@ export const authService = {
       email: credentials.email,
       password: credentials.password,
     });
+    console.log('Login response:', response);
 
     // Store token in localStorage
     if (response.data.data.token) {
       localStorage.setItem('access_token', response.data.data.token);
       localStorage.setItem('user_email', response.data.data.email);
+      const refreshToken = response.data.data.refreshToken || response.data.data.refresh_token;
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
       if (response.data.data.expiresAt) {
         localStorage.setItem('token_expires_at', response.data.data.expiresAt);
       }
@@ -43,6 +48,10 @@ export const authService = {
     if (response.data.data?.token) {
       localStorage.setItem('access_token', response.data.data.token);
       localStorage.setItem('user_email', response.data.data.email);
+      const refreshToken = response.data.data.refreshToken || response.data.data.refresh_token;
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
       if (response.data.data.expiresAt) {
         localStorage.setItem('token_expires_at', response.data.data.expiresAt);
       }
@@ -74,6 +83,10 @@ export const authService = {
     if (response.data.data.token) {
       localStorage.setItem('access_token', response.data.data.token);
       localStorage.setItem('user_email', response.data.data.email);
+      const refreshToken = response.data.data.refreshToken || response.data.data.refresh_token;
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
       if (response.data.data.expiresAt) {
         localStorage.setItem('token_expires_at', response.data.data.expiresAt);
       }
@@ -105,6 +118,24 @@ export const authService = {
     const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
       refreshToken,
     });
+
+    // Persist tokens if returned (supports different response shapes)
+    try {
+      const data = (response.data as any)?.data || response.data;
+      const accessToken = data?.accessToken || data?.token || data?.access_token;
+      const newRefresh = data?.refreshToken || data?.refresh_token || data?.RefreshToken;
+
+      if (typeof window !== 'undefined' && accessToken) {
+        localStorage.setItem('access_token', accessToken);
+      }
+
+      if (typeof window !== 'undefined' && newRefresh) {
+        localStorage.setItem('refresh_token', newRefresh);
+      }
+    } catch (err) {
+      // ignore persistence errors
+    }
+
     return response.data;
   },
 
